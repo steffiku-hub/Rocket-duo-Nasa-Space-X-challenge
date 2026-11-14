@@ -119,20 +119,6 @@ The whole game is one self-contained HTML file. There's nothing to build or inst
 
 An internet connection is only needed to load web fonts. The game still works without one.
 
----
-
-## Sources
-
-| Source | Used in the game for |
-|---|---|
-| NASA, [Artemis II Weather Criteria](https://www.nasa.gov/artemis-ii-weather-criteria) | Peak wind limit (29 kt), temperature limits (49–94 °F) |
-| NASA, [Falcon 9 Crew Dragon Launch Weather Criteria](https://www.nasa.gov/wp-content/uploads/2021/07/falcon9_crewdragon_launch_weather_criteria_fact_sheet.pdf) (fact sheet) | Lightning and cumulus-cloud limits (10 nautical miles) |
-| NASA Space Station Blog, [NASA, SpaceX Complete Dragon Space Station Reboost](https://www.nasa.gov/blogs/spacestation/2025/09/03/nasa-spacex-complete-dragon-space-station-reboost/) (Sept. 3, 2025) | ISS orbit, 260.9 × 256.3 miles (about 420 × 412 km): M-3 target of 415 km |
-| NASASpaceflight, [SpaceX launches Transporter-11](https://www.nasaspaceflight.com/2024/08/transporter-11/) (Aug. 2024) | Rideshare deployment orbits of about 510–520 km and 590–600 km (M-1 and M-2 targets); circularization burn before deployment |
-| Cal Poly, [CubeSat Design Specification Rev. 14.1](https://www.nasa.gov/wp-content/uploads/2018/01/cubesatdesignspecificationrev14_12022-02-09.pdf) (2022) | CubeSat mass limits (1U 2 kg, 3U 6 kg); 30-minute wait before deploying antennas (§2.4.4); 45-minute wait before transmitting (§2.4.5) |
-| NASA CubeSat Launch Initiative, [CubeSat 101](https://www.nasa.gov/wp-content/uploads/2017/03/nasa_csli_cubesat_101_508.pdf) (Oct. 2017) | Burn wires and deployable antennas (W-40) |
-
-Engines, tanks, prices, events and scoring are game values for teaching. Weather limits use the strictest end of each real range: Artemis II's peak-wind limit runs from 29 to 39 knots depending on height, and its cold limit from 38 to 49 °F depending on wind and humidity.
 
 ---
 
