@@ -1,0 +1,949 @@
+<title>Rocket Workshop · Two-Player</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@500;700&display=swap">
+<style>
+/* Layout: 1920x1080 split — left 5fr game console (keyboard only), right 3fr paper manual (mouse only). Deliberate single look: dark console vs. paper book. */
+:root{
+  --bg:#0b0f14; --panel:#121922; --line:#233040; --fg:#dfe7ef; --dim:#7f90a3;
+  --accent:#ff7a1a; --ok:#3ddc97; --warn:#ffcc33; --bad:#ff4d5e; --blue:#4da3ff;
+  --paper:#efe8d8; --ink:#2a2620; --ink-dim:#6d6455; --rule:#cbbfa6; --tab:#b5462b;
+  --display:"Chakra Petch",system-ui,sans-serif;
+  --body:"Inter",system-ui,sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;overflow:hidden}
+.split{display:grid;grid-template-columns:5fr 3fr;height:100%}
+/* ---------- left console ---------- */
+.console{display:flex;flex-direction:column;min-width:0;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;gap:12px;pointer-events:none;user-select:none}
+.topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-size:22px;letter-spacing:.06em}
+.brand span{color:var(--accent)}
+.steps{display:flex;gap:6px}
+.steps b{font-family:var(--display);font-size:12px;letter-spacing:.1em;padding:4px 10px;border:1px solid var(--line);border-radius:3px;color:var(--dim)}
+.steps b.on{border-color:var(--accent);color:var(--fg)}
+.steps b.done{color:var(--ok)}
+.meta{margin-left:auto;display:flex;gap:14px;align-items:center;font-family:var(--display);font-size:13px;color:var(--dim)}
+.bar{width:120px;height:10px;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok)}
+.stage{flex:1;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;position:relative;overflow:hidden}
+.keys{font-family:var(--display);font-size:13px;color:var(--dim);display:flex;gap:18px;flex-wrap:wrap}
+kbd{font-family:var(--display);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 6px;color:var(--fg);background:#0e141b}
+h2{font-family:var(--display);font-size:13px;letter-spacing:.14em;color:var(--dim);margin:0 0 12px;text-transform:uppercase}
+.focus{outline:3px solid var(--accent);outline-offset:2px}
+/* mission cards */
+.mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mcard{border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:260px}
+.mcard .code{font-family:var(--display);font-size:34px;color:var(--accent)}
+.mcard p{margin:0;color:var(--dim);line-height:1.6}
+/* assembly */
+.asm{display:grid;grid-template-columns:260px 1fr;gap:20px;height:100%}
+.asm canvas{width:100%;height:100%;background:#070a0e;border-radius:4px}
+.rows{display:flex;flex-direction:column;gap:10px;overflow:auto}
+.srow{display:grid;grid-template-columns:90px repeat(4,1fr);gap:10px;align-items:center;border:1px dashed var(--line);border-radius:4px;padding:10px}
+.srow .lbl{font-family:var(--display);color:var(--dim)}
+.cell{border:1px solid var(--line);border-radius:4px;padding:8px;display:flex;align-items:center;gap:8px;min-height:46px;font-family:var(--display);font-size:16px}
+.cell small{color:var(--dim);font-size:11px;display:block}
+.cell.edit{background:#2a1a0c;border-color:var(--accent)}
+.chip{width:22px;height:30px;border-radius:3px;flex:none}
+.act{font-family:var(--display);border:1px solid var(--line);border-radius:4px;padding:10px 14px;letter-spacing:.08em}
+.lights{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+.light{display:flex;align-items:center;gap:8px;font-family:var(--display);border:1px solid var(--line);border-radius:4px;padding:8px 12px}
+.light i{width:14px;height:14px;border-radius:50%;background:#333}
+.light.g i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.light.r i{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+/* weather */
+.wgrid{display:grid;grid-template-columns:70px repeat(7,1fr);gap:6px}
+.wgrid .hd{font-family:var(--display);color:var(--dim);font-size:13px;text-align:center;padding:4px}
+.wcell{border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-family:var(--display);font-size:17px;line-height:1.6;position:relative;min-height:150px}
+.wcell .ic{font-size:30px;line-height:1.2}
+.wcell.past{opacity:.25}
+.wcell.scrub::after{content:"SCRUB";position:absolute;inset:0;display:grid;place-items:center;color:var(--bad);font-size:18px;background:rgba(11,15,20,.6)}
+/* flight */
+.flight{display:grid;grid-template-columns:1fr 330px;gap:14px;height:100%}
+.flight canvas{width:100%;height:100%;border-radius:4px;background:#000;min-height:0}
+.ground{display:flex;flex-direction:column;gap:10px;min-height:0}
+.gauges{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.gauge{border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-family:var(--display)}
+.gauge small{color:var(--dim);font-size:12px}
+.gauge b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.gauge .gu{font-size:12px;color:var(--dim);margin-left:6px;font-weight:500}
+.gauge.hot{border-color:var(--warn);background:#2a2208}
+.alert{border:2px solid var(--line);border-radius:6px;padding:12px;font-family:var(--display);min-height:170px;display:flex;flex-direction:column;gap:6px}
+.alert .code{font-size:46px;line-height:1}
+.alert.on{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{border-color:transparent}}
+@media (prefers-reduced-motion:reduce){.alert.on{animation:none}}
+.alert .timer{font-size:20px}
+.alert .input{color:var(--dim)}
+.result{display:flex;flex-direction:column;gap:14px;max-width:900px;max-height:100%;overflow:auto}
+.result h3{font-family:var(--display);font-size:40px;margin:0}
+.result ol{margin:0;padding-left:20px;line-height:1.9}
+/* ---------- right manual ---------- */
+.manual{background:#2b2620;padding:14px;padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:10px;min-width:0;border-left:4px solid #000}
+.mnav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mnav button{font:600 14px var(--body);border:1px solid #5a5040;background:#3a3329;color:#f3ead6;border-radius:4px;padding:8px 12px;cursor:pointer}
+.mnav button:hover{background:#4a4235}
+.mnav button:focus-visible{outline:2px solid var(--accent)}
+.mnav .emg{background:var(--tab);border-color:var(--tab);color:#fff;margin-left:auto}
+.mnav .pg{color:#cfc4ae;font-family:var(--display);font-size:13px}
+.book{flex:1;min-height:0;overflow:auto;background:var(--paper);color:var(--ink);border-radius:3px;padding:28px 34px;font-family:var(--serif);font-size:16px;line-height:1.7;box-shadow:inset 0 0 40px rgba(120,90,40,.18)}
+.book h1{font-size:26px;margin:0 0 4px}
+.book .sec{font-family:var(--display);font-size:12px;letter-spacing:.16em;color:var(--tab)}
+.book h3{font-size:18px;margin:18px 0 6px}
+.book table{border-collapse:collapse;width:100%;font-family:var(--body);font-size:14px;margin:8px 0}
+.book th,.book td{color:var(--ink);border-bottom:1px solid var(--rule);padding:5px 6px;text-align:left;vertical-align:top}
+.book th{color:var(--ink-dim)!important;font-weight:500}
+.book td.n{font-variant-numeric:tabular-nums;font-family:var(--display)}
+.book .src{font-family:var(--body);font-size:12px;color:var(--ink-dim)}
+.book .step{border:2px solid var(--ink);border-radius:4px;padding:10px 14px;margin:10px 0;font-family:var(--body)}
+.book .step b.k{font-family:var(--display);font-size:22px;color:var(--tab)}
+.book a{color:var(--tab);cursor:pointer;text-decoration:underline}
+.book .ok{color:#1d7a4a;font-weight:700}.book .no{color:#a8321f;font-weight:700}
+.mnav .mtitle{font-family:var(--display);font-weight:700;letter-spacing:.2em;color:#f3ead6;font-size:16px;margin-right:4px}
+/* ---------- weather side info / budget ---------- */
+.wwrap{display:grid;grid-template-columns:1fr 250px;gap:14px}
+.ledger{border:1px solid var(--line);border-radius:6px;padding:12px;font-family:var(--display);font-size:14px;display:flex;flex-direction:column;gap:6px}
+.ledger .row{display:flex;justify-content:space-between;gap:8px}
+.ledger .row span:first-child{color:var(--dim)}
+.ledger .big{font-size:26px}
+.ledger hr{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
+.dl{display:inline-block;border:1px solid var(--bad);color:var(--bad);border-radius:3px;padding:2px 8px;font-family:var(--display);margin-left:8px}
+.wcell.late{background:repeating-linear-gradient(135deg,rgba(255,77,94,.08) 0 8px,transparent 8px 16px)}
+.wwrap{grid-template-columns:1fr 225px}
+.wwrap .wcell{font-size:14px;padding:6px 7px;min-height:120px;white-space:nowrap;line-height:1.7}
+.wgrid .hd.late{color:var(--bad)}
+/* ---------- launch ready ---------- */
+.ready{display:grid;grid-template-columns:1fr 340px;gap:20px;height:100%}
+.ready .warnbox{border:2px solid var(--warn);border-radius:6px;padding:16px 20px;background:#1d1806;line-height:1.7}
+.ready .warnbox b{color:var(--warn)}
+.poll{display:flex;flex-direction:column;gap:6px;font-family:var(--display)}
+.poll div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 2px}
+.poll .go{color:var(--ok)}
+.count{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;gap:12px;padding:20px}
+.count .num{font-family:var(--display);font-size:120px;line-height:1;font-variant-numeric:tabular-nums;color:var(--warn)}
+.count .num.go{color:var(--ok);font-size:64px}
+.startbtn{font-family:var(--display);font-size:22px;letter-spacing:.12em;border:2px solid var(--line);color:var(--dim);border-radius:6px;padding:14px 22px;text-align:center}
+.startbtn.on{border-color:var(--ok);color:#06140d;background:var(--ok);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 24px var(--ok)}}
+@media (prefers-reduced-motion:reduce){.startbtn.on{animation:none}}
+.alert .wrong{color:var(--bad);font-family:var(--body);font-size:14px;line-height:1.45;background:rgba(255,77,94,.08);border-radius:4px;padding:6px 8px}
+.emgcall{position:relative;border:4px solid var(--bad);border-radius:8px;background:#2a0b10;padding:18px 90px 18px 22px;animation:emgblink 1s steps(2) infinite}
+.emgcall .big{display:block;font-family:var(--display);font-weight:700;font-size:34px;line-height:1.15;color:#fff;letter-spacing:.03em}
+.emgcall .sub{display:block;margin-top:8px;color:#ffb3bb;font-size:16px}
+.emgcall .arrow{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:56px;color:var(--bad);animation:nudge 1s ease-in-out infinite}
+@keyframes emgblink{50%{border-color:#ffd0d5;box-shadow:0 0 28px rgba(255,77,94,.6)}}
+@keyframes nudge{50%{transform:translate(10px,-50%)}}
+.mnav .emg.call{animation:emgbtn 1s ease-in-out infinite;outline:3px solid #fff;outline-offset:2px}
+@keyframes emgbtn{50%{box-shadow:0 0 0 8px rgba(255,77,94,.45);transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.emgcall,.emgcall .arrow,.mnav .emg.call{animation:none}}
+/* ---------- orbit success ---------- */
+.orbitwrap{position:relative;height:100%}
+.orbitwrap canvas{width:100%;height:100%;display:block;border-radius:4px;background:#02040a}
+.orbitcard{position:absolute;left:24px;top:24px;max-width:430px;background:rgba(10,16,24,.82);border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:6px;padding:18px 22px;display:flex;flex-direction:column;gap:8px}
+.orbitcard h3{font-family:var(--display);font-size:30px;margin:0;color:var(--ok);line-height:1}
+.orbitcard .row{display:flex;justify-content:space-between;font-family:var(--display);font-size:16px;gap:20px}
+.orbitcard .row span:first-child{color:var(--dim)}
+.orbitback{position:absolute;right:24px;bottom:24px;font-family:var(--display);font-size:18px;background:rgba(10,16,24,.82);border:1px solid var(--line);border-radius:6px;padding:10px 16px}
+.orbitback b{color:var(--accent);font-size:26px;font-variant-numeric:tabular-nums}
+
+/* ---------- tutorial overlay ---------- */
+.tut{position:fixed;inset:0;background:rgba(4,7,11,.86);display:grid;place-items:center;z-index:50;padding:24px}
+.tutbox{width:min(1080px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:8px;overflow:hidden}
+.tuthead{display:flex;justify-content:space-between;padding:14px 26px 0;font-family:var(--display);font-size:13px;letter-spacing:.16em;color:var(--accent)}
+.tutpg{color:var(--dim)}
+.tutbody{padding:10px 26px 18px;overflow:auto;line-height:1.65;font-size:16px}
+.tutbody h1{font-family:var(--display);font-size:34px;margin:4px 0 10px;letter-spacing:.02em}
+.tutbody h3{font-family:var(--display);font-size:17px;margin:14px 0 4px;color:var(--fg)}
+.tutbody p{margin:6px 0;color:#c6d1dc}
+.tutbody ul{margin:6px 0;padding-left:22px;color:#c6d1dc}
+.tutbody li{margin:3px 0}
+.tutbody b{color:var(--fg)}
+.real{border-left:3px solid var(--blue);background:#0d1724;padding:8px 14px;margin:10px 0;border-radius:0 4px 4px 0;font-size:15px}
+.real::before{content:"REAL WORLD";display:block;font-family:var(--display);font-size:11px;letter-spacing:.18em;color:var(--blue)}
+.caution{border-left:3px solid var(--warn);background:#1d1806;padding:8px 14px;margin:10px 0;border-radius:0 4px 4px 0;font-size:15px}
+.caution::before{content:"WATCH OUT";display:block;font-family:var(--display);font-size:11px;letter-spacing:.18em;color:var(--warn)}
+.roles{display:grid;grid-template-columns:5fr 3fr;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:10px 0}
+.roles>div{padding:14px 16px}
+.roles .l{background:#0e141b}
+.roles .r{background:var(--paper);color:var(--ink)}
+.roles .r p,.roles .r li{color:var(--ink)}.roles .r b{color:var(--ink)}
+.roles .tag{font-family:var(--display);font-size:12px;letter-spacing:.16em}
+.roles .l .tag{color:var(--accent)}.roles .r .tag{color:var(--tab)}
+.flow{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:10px 0}
+.flow div{border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-size:13px;line-height:1.45;color:var(--dim)}
+.flow div b{display:block;font-family:var(--display);font-size:14px;color:var(--fg)}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0}
+.tgrid>div{border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:14.5px}
+.tgrid .c{font-family:var(--display);font-size:24px;color:var(--accent)}
+.tbl{border-collapse:collapse;width:100%;font-size:14.5px;margin:8px 0}
+.tbl td,.tbl th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.tbl th{color:var(--dim);font-weight:500;font-family:var(--display);font-size:12px;letter-spacing:.1em}
+.tutnav{display:flex;align-items:center;gap:10px;padding:12px 26px;border-top:1px solid var(--line);background:#0e141b}
+.tutnav button{font:600 15px var(--body);border:1px solid var(--line);background:#16202b;color:var(--fg);border-radius:4px;padding:9px 16px;cursor:pointer}
+.tutnav button:hover{background:#1e2a37}
+.tutnav button.pri{background:var(--accent);border-color:var(--accent);color:#1a0d02}
+.tutnav button:disabled{opacity:.35;cursor:default}
+.tutnav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tutdots{flex:1;display:flex;gap:6px;justify-content:center}
+.tutdots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.tutdots i.on{background:var(--accent)}
+.swatch{display:inline-block;width:14px;height:20px;border-radius:2px;vertical-align:middle;margin-right:6px}
+</style>
+
+<div class="split">
+<section class="console" aria-label="Engineer console (keyboard)">
+  <div class="topbar">
+    <div class="brand">ROCKET <span>WORKSHOP</span></div>
+    <div class="steps" id="steps"></div>
+    <div class="meta"><span id="metaM"></span><span>BUDGET</span><div class="bar"><i id="budgetBar"></i></div><span id="metaR"></span></div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="keys" id="keys"></div>
+</section>
+
+<section class="manual" aria-label="Mission control manual (mouse)">
+  <div class="mnav">
+    <span class="mtitle">MANUAL</span>
+    <button id="mTut">? Tutorial</button>
+    <button id="mToc">Contents</button>
+    <button id="mPrev">◀</button>
+    <button id="mNext">▶</button>
+    <span class="pg" id="mPg"></span>
+    <button class="emg" id="mEmg">⚠ EMERGENCY</button>
+  </div>
+  <article class="book" id="book"></article>
+</section>
+</div>
+
+<div class="tut" id="intro" hidden role="dialog" aria-modal="true" aria-label="Step briefing">
+  <div class="tutbox" style="width:min(980px,100%)">
+    <div class="tuthead"><span class="tutkicker" id="introKick"></span><span class="tutpg">BRIEFING</span></div>
+    <div class="tutbody" id="introBody"></div>
+    <div class="tutnav"><span style="flex:1;color:var(--dim);font-size:14px">Engineer: press <kbd>Enter</kbd> · Manual reader: click</span><button id="introOk" class="pri">Got it ▶</button></div>
+  </div>
+</div>
+
+<div class="tut" id="tut" role="dialog" aria-modal="true" aria-label="Tutorial">
+  <div class="tutbox">
+    <div class="tuthead"><span class="tutkicker">ROCKET WORKSHOP · BRIEFING</span><span id="tutPg" class="tutpg"></span></div>
+    <div class="tutbody" id="tutBody"></div>
+    <div class="tutnav">
+      <button id="tutSkip">Skip tutorial</button>
+      <span class="tutdots" id="tutDots"></span>
+      <button id="tutPrev">◀ Back</button>
+      <button id="tutNext" class="pri">Next ▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= shared data (game + manual) ================= */
+const G0=9.80665, MU=3.986e14, RE=6371e3;
+const ENG={
+  A:{name:"Sparrow",color:"#d8443a",F:900e3, sl:270,vac:300,m:1.6,cost:8, desc:"red, short"},
+  B:{name:"Whale",color:"#3b7fd9",F:2400e3,sl:285,vac:315,m:4.2,cost:22,desc:"blue, long"},
+  C:{name:"Hydrolox",color:"#e8e8e8",F:1500e3,sl:340,vac:440,m:3.2,cost:36,desc:"white"},
+  D:{name:"Vacuum",color:"#d9a52b",F:300e3, sl:120,vac:350,m:0.9,cost:12,desc:"gold, big nozzle"},
+};
+const TANK={
+  T1:{name:"Small",color:"#8fd18f",fuel:10, dry:0.8,cost:2, desc:"green, short"},
+  T2:{name:"Medium",color:"#c08fd1",fuel:40, dry:2.6,cost:6, desc:"purple, medium"},
+  T3:{name:"Large",color:"#d1c48f",fuel:120,dry:7,  cost:15,desc:"yellow, long"},
+};
+const MIS=[
+  {code:"M-1",name:"Dawn-1",story:"A swarm of tiny satellites built by university students, beaming signals to amateur radio operators around the world.",icon:"📡",payload:2,peri:525e3,budget:80,need:9300,
+   req:"4 × 1U CubeSats + dispenser", deadline:7,
+   orbit:"Sun-synchronous orbit, 525 km circular",slot:"4 CubeSats released one by one, spreading out into a train",sep:"4 CubeSats deploying",
+   real:"SpaceX's Transporter rideshare flights deploy CubeSats into sun-synchronous orbits of about 510–525 km."},
+  {code:"M-2",name:"Wingspan",story:"A 3U tech-demo satellite that will unfold a new type of solar panel in space.",icon:"🛰",payload:6,peri:590e3,budget:130,need:9400,
+   req:"3U CubeSat + large dispenser", deadline:6,
+   orbit:"Sun-synchronous orbit, 590 km circular",slot:"Released on its own, then unfolds its new solar panel",sep:"Wingspan released, panel unfolding",
+   real:"Rideshare upper stages often do extra burns to drop a second group of satellites higher, around 590–600 km."},
+  {code:"M-3",name:"Supply Line",story:"Carry a supply capsule to the International Space Station's orbit so it can dock with the crew.",icon:"🏠",payload:3,peri:415e3,budget:85,need:9250,
+   req:"Supply capsule to ISS altitude", deadline:5,
+   orbit:"ISS orbit, 415 km circular",slot:"Inserted on the station's orbit, a short way behind it, ready to close in and dock",sep:"Capsule on the ISS orbit, behind the station",
+   real:"The ISS flies at roughly 412–420 km. Real cargo ships are released a bit lower and spend hours to days catching up before docking."},
+];
+const P=s=>s.split("/").map(x=>{const m=x.match(/(\w)(\d)(T\d)x(\d)/);return{e:m[1],n:+m[2],t:m[3],k:+m[4]};});
+const COMBOS={ // per mission quick table; every ✓ row was flight-tested in the simulator to the exact target orbit
+  "M-1":["B1T3x1/D1T1x1","B1T3x1/D1T1x2","B1T3x1/D2T1x2","B2T3x1/D1T1x2","A2T1x2/D1T1x1"].map(P),
+  "M-2":["B1T3x1/C1T2x1","B2T3x2/D2T1x3","B2T3x1/C1T2x2","B2T3x1/C1T3x1","B2T3x1/D1T2x1"].map(P),
+  "M-3":["B1T3x1/D1T1x2","B1T3x1/D2T2x1","B1T3x1/D1T1x1","B1T3x1/C1T1x2","B2T3x1/D2T2x1"].map(P),
+};
+const ERR={
+  "E-01":{t:"Stage 1 thrust too low: the rocket can't leave the pad",fix:"Add engines to stage 1 or switch to engine B; or use fewer tanks on stage 1"},
+  "E-02":{t:"Not enough total Δv to reach the target orbit",fix:"Bigger tanks on the upper stage, or an efficient upper-stage engine (C or D). See Quick Designs"},
+  "E-03":{t:"Over budget (hardware + propellant)",fix:"Fewer engines, smaller tanks, or cheaper parts (A and D are cheap)"},
+  "E-04":{t:"Upper stage too weak (thrust-to-weight under 0.9): it can't hold altitude during the circularization burn",fix:"Add 1 engine to the upper stage, use a smaller upper-stage tank, or switch to engine C"},
+  "E-05":{t:"Upper stage too small: under 3,700 m/s of Δv on its own, so it can't finish the circularization burn",fix:"Give the top stage a bigger tank or more tanks, or use the efficient D or C engine on it"},
+};
+const WARN={
+  "W-12":{real:"Around Max-Q, the moment of greatest air pressure on the rocket, real rockets throttle down to protect the structure.",name:"High-altitude wind shear / dynamic pressure",light:"Yellow",lc:"var(--warn)",keys:["A","A"],gauge:"⑦",
+    say:"Press A twice", why:"Pitches the nose up 5° to slow through the thick air, bringing dynamic pressure back under 75 kPa",fail:"Dynamic pressure exceeds the limit and the structure breaks up"},
+  "W-21":{real:"Many engines cool themselves by running cold propellant around the nozzle. Going over a temperature limit can damage the engine.",name:"Engine overheating",light:"Red",lc:"var(--bad)",keys:["ENTER"],gauge:"⑧",
+    say:"Press Enter once", why:"Switches on the backup cooling loop and brings engine temperature back to normal",fail:"Engine damaged: this stage permanently loses 30% thrust"},
+  "W-30":{real:"Stages are pushed apart by explosive bolts or springs. If they don't separate, the upper stage has to drag dead weight.",name:"Stage separation sensor fault",light:"Blue",lc:"var(--blue)",keys:["ENTER","ENTER"],gauge:"④",
+    say:"Press Enter twice", why:"Manual separation: the first press unlocks, the second fires the separation charges",fail:"The stages stay stuck together, the upper stage drags dead weight, and the mission fails"},
+  "W-40":{real:"Small-satellite antennas are often held folded by a thin wire that is burned through with electric current. A failed deployment is a common reason small satellites go silent.",name:"Antenna not deployed",light:"White",lc:"#fff",keys:["D","ENTER"],gauge:"—",
+    say:"Press D, then Enter", why:"Switches to the backup burn wire and powers it, so the antenna springs open",fail:"The satellite can't talk to the ground (partial success)"},
+};
+const GTITLE=[["Altitude","km"],["Speed","m/s"],["Perigee","km"],["Stage fuel","%"],["Apogee","km"],["Pitch from vertical","°"],["Dynamic pressure","kPa · max 75"],["Engine temp","°C · max 900"]];
+const GAUGES=[["①","Altitude","km"],["②","Speed","m/s"],["③","Perigee","km"],["④","Fuel left in current stage","%"],["⑤","Apogee","km"],["⑥","Pitch angle (0 = vertical)","°"],["⑦","Dynamic pressure","kPa, limit 75"],["⑧","Engine temperature","°C, limit 900"]];
+
+/* ================= helpers ================= */
+const $=id=>document.getElementById(id);
+function rng(seed){let s=seed>>>0||1;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+function analyze(stages,m){
+  const info=stages.map(s=>{const e=ENG[s.e],t=TANK[s.t];return{F:e.F*s.n,sl:e.sl,vac:e.vac,fuel:t.fuel*s.k*1000,dry:(e.m*s.n+t.dry*s.k)*1000,cost:e.cost*s.n+t.cost*s.k,s};});
+  const pay=(m.payload+0.6)*1000;let above=pay;const dvs=[],twr=[];
+  for(let i=info.length-1;i>=0;i--){const st=info[i],m0=above+st.fuel+st.dry,m1=above+st.dry;
+    dvs[i]=st.vac*G0*Math.log(m0/m1);twr[i]=(i===0?st.F*st.sl/st.vac:st.F)/(m0*G0);above=m0;}
+  const hw=info.reduce((a,b)=>a+b.cost,0)+Math.round(m.payload*2);
+  const fuelT=info.reduce((a,b)=>a+b.fuel,0)/1000, prop=propCost(fuelT);
+  return{info,dvs,twr,total:dvs.reduce((a,b)=>a+b,0),mass:above,cost:hw+prop,hw,prop,fuelT,pay};
+}
+/* budget rules (game values). Tank design → propellant & scrub cost; launch date → standby; weather → scrub / surcharge */
+const STANDBY=4;                                   // per day the pad & crew wait
+const propCost=t=>Math.ceil(t/40);                 // propellant + loading, per 40 t
+const scrubCost=t=>3+Math.ceil(t/60);              // detank, boil-off, recycle; bigger tanks cost more
+const MARGINAL=3;                                  // wind 22–29 kt: extra upper-air balloons & weather team
+function spend(label,amt){S.reserve-=amt;S.ledger.push([label,amt]);}
+const UPPER_DV=3700; // the top stage alone must be able to finish the job (circularization)
+function check(stages,m){const a=analyze(stages,m),e=[];
+  if(a.twr[0]<1.15)e.push("E-01");if(a.total<m.need)e.push("E-02");if(a.cost>m.budget)e.push("E-03");
+  if(a.twr.slice(1).some(t=>t<0.9))e.push("E-04");
+  if(a.info.length>1&&a.dvs[a.dvs.length-1]<UPPER_DV)e.push("E-05");return{a,errors:e};}
+
+/* weather: 7 days x 4 slots, seeded per mission. g1 peak wind kt, g2 temp F, g3 lightning nmi (null none), g4 cumulus nmi (null none) */
+const SLOTS=["06:00","12:00","18:00","23:00"];
+function makeWeather(seed){const r=rng(seed*97+13),W=[];
+  for(let d=0;d<7;d++){const storm=r()<0.35,cold=r()<0.15,windy=r()<0.3,day=[];
+    for(let s=0;s<4;s++){const aft=s===1||s===2;
+      const wind=Math.round((windy?24:8)+r()*14+(aft?3:0));
+      const temp=Math.round((cold?40:68)+r()*12+(aft?10:-4));
+      const lightning=storm&&aft&&r()<0.8?Math.round(2+r()*9):null;
+      const cu=storm&&r()<0.7?Math.round(3+r()*12):(r()<0.15?Math.round(8+r()*10):null);
+      day.push({wind,temp,lightning,cu});}
+    W.push(day);}
+  // guarantee at least two good slots
+  W[2][0]={wind:12,temp:66,lightning:null,cu:null};W[4][3]={wind:16,temp:61,lightning:null,cu:null};
+  return W;}
+function judge(w){const r=[];
+  if(w.wind>29)r.push("wind");if(w.temp<49)r.push("cold");if(w.temp>94)r.push("hot");
+  if(w.lightning!==null&&w.lightning<10)r.push("lightning");if(w.cu!==null&&w.cu<10)r.push("cumulus");
+  return r;}
+function icon(w){if(w.lightning!==null&&w.lightning<12)return"⛈";if(w.cu!==null)return"☁";if(w.wind>25)return"🌬";return"☀";}
+
+/* ================= game state ================= */
+const S={phase:0,mi:0,mission:null,stages:[],cur:{r:0,c:0},edit:false,errors:null,
+  weather:null,wcur:{d:0,s:0},scrubs:{},day:0,reserve:0,flight:null,result:null};
+const PHASES=["MISSION","ASSEMBLY","LAUNCH PLAN","LAUNCH PREP","FLIGHT","RESULT"];
+
+function setPhase(p){S.phase=p;render();}
+function render(){
+  $("steps").innerHTML=PHASES.map((n,i)=>`<b class="${i===S.phase?"on":i<S.phase?"done":""}">${i+1} ${n}</b>`).join("");
+  $("metaM").textContent=S.mission?`${S.mission.code} ${S.mission.name}`:"No mission yet";
+  $("metaR").textContent=S.mission?`${S.reserve} left`:"";
+  if(S.phase!==3)stopReady();
+  const pct=S.mission?Math.max(0,Math.min(1,S.reserve/(S.mission.budget*0.4))):1;
+  $("budgetBar").style.width=(pct*100)+"%";$("budgetBar").style.background=pct>0.5?"var(--ok)":pct>0.2?"var(--warn)":"var(--bad)";
+  [renderMission,renderAssembly,renderWeather,renderReady,renderFlight,renderResult][S.phase]();
+  if(typeof maybeIntro==="function")maybeIntro();
+}
+function keysHint(list){$("keys").innerHTML=list.map(([k,t])=>`<span>${k} ${t}</span>`).join("");}
+const K=s=>s.split(" ").map(x=>`<kbd>${x}</kbd>`).join(" ");
+
+/* ---------- phase 0 mission ---------- */
+function renderMission(){
+  $("stage").innerHTML=`<h2>Choose a mission · read the mission code to the Manual reader</h2><div class="mcards">${MIS.map((m,i)=>`
+   <div class="mcard ${i===S.mi?"focus":""}"><div class="code">${m.code}</div><div style="font-size:44px">${m.icon}</div>
+   <b style="font-family:var(--display);font-size:20px">${m.name}</b><p>${m.story}</p></div>`).join("")}</div>
+   <p style="color:var(--dim);margin-top:18px">Pick just one. Completing any one of them counts as a successful launch. You can't see the requirements here: the Manual's <b>Missions</b> page lists payload, target orbit, budget and deadline for each code.</p>`;
+  keysHint([[K("A D")+" / "+K("← →"),"choose mission"],[K("Enter"),"accept mission"]]);
+}
+/* ---------- phase 1 assembly ---------- */
+const FIELDS=["e","n","t","k"],FNAME=["Engine","Count","Tank","Tanks"];
+function asmRows(){return [...S.stages.map((_,i)=>({type:"stage",i})).reverse(),{type:"add"},{type:"del"},{type:"check"}];}
+function renderAssembly(){
+  const rows=asmRows();const ck=S.errors;
+  let h=`<div class="asm"><canvas id="pv" width="260" height="700"></canvas><div class="rows"><h2>Build the rocket (bottom row = stage 1, top row = last stage)</h2>`;
+  rows.forEach((row,ri)=>{const f=ri===S.cur.r;
+    if(row.type==="stage"){const s=S.stages[row.i];
+      h+=`<div class="srow"><span class="lbl">STAGE ${row.i+1}</span>`+FIELDS.map((k,ci)=>{
+        const foc=f&&S.cur.c===ci,ed=foc&&S.edit;let v="";
+        if(k==="e")v=`<span class="chip" style="background:${ENG[s.e].color}"></span><span>Engine ${s.e}<small>${ENG[s.e].desc}</small></span>`;
+        if(k==="t")v=`<span class="chip" style="background:${TANK[s.t].color}"></span><span>${s.t}<small>${TANK[s.t].desc}</small></span>`;
+        if(k==="n"||k==="k")v=`<span><small>${FNAME[ci]}</small>× ${s[k]}</span>`;
+        return `<div class="cell ${foc?"focus":""} ${ed?"edit":""}">${v}</div>`;}).join("")+`</div>`;}
+    else{const t={add:"+ Add a stage (on top)",del:"− Remove top stage",check:"INSPECT"}[row.type];
+      h+=`<div class="act ${f?"focus":""}" ${row.type==="check"?'style="border-color:var(--accent)"':""}>${t}</div>`;}
+  });
+  h+=`<div><h2 style="margin-top:8px">Inspection lights</h2><div class="lights">${Object.keys(ERR).map(c=>{
+     const st=!ck?"":ck.includes(c)?"r":"g";return `<div class="light ${st}"><i></i>${c}</div>`;}).join("")}</div></div></div></div>`;
+  $("stage").innerHTML=h;drawPreview();
+  keysHint([[K("W S")+" / "+K("↑ ↓"),S.edit?"change value":"move up/down"],[K("A D")+" / "+K("← →"),"switch field"],[K("Enter"),S.edit?"confirm":"edit / run"]]);
+}
+function drawPreview(){const c=$("pv");if(!c)return;const x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);
+  let y=c.height-30;const tot=S.stages.reduce((a,s)=>a+30+Math.sqrt(TANK[s.t].fuel)*s.k*5,0)+60,sc=Math.min(1.4,(c.height-60)/tot);
+  S.stages.forEach((s,i)=>{const w=(40+10*Math.min(s.n,5))*sc*(0.88**i),hh=(30+Math.sqrt(TANK[s.t].fuel)*s.k*5)*sc;
+    for(let j=0;j<Math.min(s.n,5);j++){x.fillStyle=ENG[s.e].color;const ew=w/Math.min(s.n,5);x.fillRect(c.width/2-w/2+j*ew+2,y,ew-4,14*sc);}
+    x.fillStyle=TANK[s.t].color;x.fillRect(c.width/2-w/2,y-hh,w,hh);
+    x.strokeStyle="rgba(0,0,0,.4)";for(let j=1;j<s.k;j++){x.beginPath();x.moveTo(c.width/2-w/2,y-hh*j/s.k);x.lineTo(c.width/2+w/2,y-hh*j/s.k);x.stroke();}
+    x.fillStyle="#111";x.font=`700 ${14}px Chakra Petch`;x.textAlign="center";x.fillText(`${i+1}`,c.width/2,y-hh/2+5);
+    y-=hh+2;});
+  x.fillStyle="#f4f6f8";x.beginPath();x.moveTo(c.width/2-20,y);x.quadraticCurveTo(c.width/2,y-70*sc,c.width/2+20,y);x.fill();}
+
+/* ---------- phase 2 weather / launch date ---------- */
+function renderWeather(){const m=S.mission,dl=m.deadline;
+  let h=`<h2>Pick launch day &amp; time · read the icon and ①②③④ aloud; the Manual reader decides GO / NO-GO <span class="dl">⚑ DEADLINE: DAY ${dl}</span></h2>
+   <div class="wwrap"><div><div class="wgrid"><div></div>`;
+  for(let d=0;d<7;d++)h+=`<div class="hd ${d+1>dl?"late":""}">DAY ${d+1}${d+1>dl?" ⚑":""}</div>`;
+  for(let s=0;s<4;s++){h+=`<div class="hd" style="text-align:right">${SLOTS[s]}</div>`;
+    for(let d=0;d<7;d++){const w=S.weather[d][s],f=S.wcur.d===d&&S.wcur.s===s,past=d<S.day,sc=S.scrubs[d+"-"+s];
+      h+=`<div class="wcell ${f?"focus":""} ${past?"past":""} ${sc?"scrub":""} ${d+1>dl?"late":""}"><div class="ic">${icon(w)}</div>
+       ① ${w.wind} ② ${w.temp}<br>③ ${w.lightning===null?"—":w.lightning} ④ ${w.cu===null?"—":w.cu}</div>`;}}
+  const wait=S.wcur.d-S.day,late=S.wcur.d+1>dl;
+  h+=`</div><p style="color:var(--dim);margin-top:10px">Today is day ${S.day+1}. ⚑ Red-striped days are past the ${m.code} deadline: launching on one fails the mission.</p></div>
+   <div class="ledger"><span style="color:var(--dim);letter-spacing:.12em;font-size:12px">BUDGET</span>
+     <div class="row"><span>Mission budget</span><b>${m.budget}</b></div>
+     ${S.ledger.map(([l,v])=>`<div class="row"><span>${l}</span><b style="color:var(--bad)">−${v}</b></div>`).join("")}
+     <hr><div class="row"><span>Remaining</span><b class="big" style="color:${S.reserve<8?"var(--bad)":"var(--ok)"}">${S.reserve}</b></div>
+     <hr><span style="color:var(--dim);font-size:12px;letter-spacing:.12em">IF YOU PICK THIS SLOT</span>
+     <div class="row"><span>Pad standby ${wait} day${wait===1?"":"s"} × ${STANDBY}</span><b>${wait?"−"+wait*STANDBY:"0"}</b></div>
+     <div class="row"><span>If scrubbed (depends on your tanks)</span><b>−${S.scrubFee}</b></div>
+     ${late?`<div class="row"><span style="color:var(--bad)">Past deadline</span><b style="color:var(--bad)">FAIL</b></div>`:""}
+   </div></div>`;
+  $("stage").innerHTML=h;
+  keysHint([[K("A D")+" / "+K("← →"),"change day"],[K("W S")+" / "+K("↑ ↓"),"change time"],[K("Enter"),"launch in this slot"]]);
+}
+
+/* ---------- phase 3 launch ready (10 s prep, then START LAUNCH) ---------- */
+const PREP=10;let readyTimer=null;
+function stopReady(){if(readyTimer){clearInterval(readyTimer);readyTimer=null;}$("mEmg").classList.remove("call");}
+function goReady(w){S.pendingW=w;S.prep={end:performance.now()+PREP*1000};setPhase(3);
+  stopReady();$("mEmg").classList.add("call");readyTimer=setInterval(()=>{if(TUT.open||INTRO_ST.open)S.prep.end+=100;if(S.phase===3)renderReady();},100);}
+function renderReady(){const w=S.pendingW,left=Math.max(0,(S.prep.end-performance.now())/1000),done=left<=0;
+  if(!$("rdy")){
+    $("stage").innerHTML=`<div class="ready" id="rdy"><div style="display:flex;flex-direction:column;gap:14px;min-height:0;overflow:auto">
+      <div><h2 style="margin-bottom:4px">READY FOR LAUNCH</h2>
+      <div style="font-family:var(--display);font-size:28px">${S.mission.code} ${S.mission.name} · Day ${S.wcur.d+1}, ${SLOTS[S.wcur.s]}</div></div>
+      <div class="poll"><div><span>Vehicle</span><b class="go">GO</b></div><div><span>Weather</span><b class="go">GO</b></div>
+        <div><span>Range</span><b class="go">GO</b></div><div><span>Budget remaining</span><b>${S.reserve}</b></div></div>
+      <div class="warnbox"><b>⚠ Things WILL go wrong after liftoff.</b><br>
+        Real launches are the same: wind shear, engine overheating, stage separation and antenna deployment are all problems flight teams train for.<br>
+        When a warning appears the flight pauses and you have <b>${RESP} seconds</b> to respond:<br>
+        <b>Left</b> reads the <b>code, light colour and highlighted gauge</b> → <b>Right</b> finds it on the Manual's Emergency Codes page and reads out the keys → <b>Left</b> presses them.<br>
+        Pressed a wrong key? Just start again before time runs out.<br>
+        <span style="color:var(--dim)">Real world: before every launch, the launch director asks each team for a final <b style="color:var(--fg)">go / no-go</b>.</span></div>
+      <div class="emgcall"><span class="big">MANUAL READER:<br>PRESS ⚠ EMERGENCY NOW</span><span class="arrow">➜</span>
+        <span class="sub">Keep the emergency codes open for the whole flight.</span></div>
+    </div><div class="count"><span style="color:var(--dim);font-family:var(--display);letter-spacing:.14em">PREPARE</span>
+      <div class="num" id="rdyNum"></div><div class="startbtn" id="rdyBtn"></div><span id="rdyHint" style="color:var(--dim);text-align:center"></span></div></div>`;}
+  $("rdyNum").textContent=done?"GO":Math.ceil(left);$("rdyNum").className="num"+(done?" go":"");
+  $("rdyBtn").className="startbtn"+(done?" on":"");$("rdyBtn").textContent="START LAUNCH";
+  $("rdyHint").innerHTML=done?`Press <kbd>Enter</kbd> to launch`:`Available when the countdown ends`;
+  keysHint([[K("Enter"),done?"START LAUNCH":"(preparing…)"]]);
+}
+function kReady(k){if(k==="E"&&performance.now()>=S.prep.end){stopReady();startFlight(S.pendingW);}}
+
+/* ---------- phase 3 flight ---------- */
+function startFlight(w){
+  const a=analyze(S.stages,S.mission),r=rng(S.mi*31+S.wcur.d*7+S.wcur.s+5);
+  const ev=[];
+  if(w.wind>=22||r()<0.35)ev.push({code:"W-12",at:{t:28}});
+  if(r()<0.55)ev.push({code:"W-21",at:{t:70+r()*30}});
+  if(a.info.length>1&&r()<0.6)ev.push({code:"W-30",at:{fuel0:0.06}});
+  ev.push({code:"W-40",at:{orbit:true}});
+  S.flight={a,t:0,x:0,y:RE,vx:465,vy:0,stage:0,fuel:a.info.map(s=>s.fuel),pitch:0,manual:0,q:0,maxQ:0,path:[],
+    mode:"asc",thrustMul:a.info.map(()=>1),events:ev,active:null,log:[],running:true,orbit:false,temp:420,stuck:false,heat:false};
+  flog("Ignition! Liftoff");
+  S.phase=4;render();last=performance.now();requestAnimationFrame(loop);
+}
+function flog(m){S.flight.log.push(`T+${S.flight.t.toFixed(0)}s ${m}`);}
+function orbitOf(x,y,vx,vy){const r=Math.hypot(x,y),v2=vx*vx+vy*vy,eps=v2/2-MU/r,h=x*vy-y*vx;
+  const e=Math.sqrt(Math.max(0,1+2*eps*h*h/MU/MU));if(eps>=0)return{esc:true,rp:(h*h/MU)/(1+e),ra:Infinity};const a=-MU/(2*eps);return{rp:a*(1-e),ra:a*(1+e)};}
+const RESP=10; // seconds the team gets to respond to each warning
+const PARK=70e3,INS_CUT=2e3,INS_TOL=15,INS_DEPLOY=12,INS_HOLD=24; // cutoff margin (m), tolerance (km), sim-seconds after cutoff for deploy / result
+function trigger(code){const f=S.flight;f.active={code,left:RESP,input:[],wrong:0,guard:performance.now()+600};flog(`Ground warning ${code}`);}
+function step(dt){
+  const f=S.flight,a=f.a,m=S.mission,r=Math.hypot(f.x,f.y),h=r-RE,ux=f.x/r,uy=f.y/r,ex=uy,ey=-ux;
+  const rho=h<150e3?1.225*Math.exp(-h/8400):0,p=rho/1.225,turn=90e3;
+  let auto=h<800?0:Math.min(1,Math.pow((h-800)/turn,0.55))*Math.PI/2*0.97;
+  const vr0=f.vx*ux+f.vy*uy;
+  if(f.mode==="asc"&&h>30e3){const o=orbitOf(f.x,f.y,f.vx,f.vy),err=o.esc?1e9:(o.ra-RE-m.peri); // burn 1: put apogee on the target altitude
+    const cmd=Math.PI/2+Math.max(-0.42,Math.min(0.5,err/25e3));auto=err>0?cmd:Math.min(auto,cmd);}
+  if(f.mode==="coast")auto=Math.PI/2;
+  if(f.mode==="circ")auto=Math.PI/2+Math.max(-1,Math.min(0.6,vr0/40+(h-m.peri)/15e3)); // burn 2 at apogee: horizontal, hold the target altitude
+  f.manual*=Math.exp(-dt/4);if(f.mode!=="asc")f.manual=0; // autopilot pulls pilot nudges back within a few seconds
+  f.pitch=Math.max(0,Math.min(Math.PI/2+0.5,auto+f.manual));
+  const st=a.info[f.stage];let F=0;
+  if(st&&!f.orbit&&f.mode!=="coast"&&f.fuel[f.stage]>0){
+    const thr=f.q>35e3?Math.max(0.55,1-(f.q-35e3)/25e3):1,mul=f.thrustMul[f.stage];
+    let trim=1;if(f.mode==="circ"){ // final trim: throttle down as speed approaches circular, like a real upper stage
+      let m0=a.pay;for(let i=f.stage;i<a.info.length;i++)m0+=a.info[i].dry+f.fuel[i];
+      const vt=Math.abs(f.vx*ex+f.vy*ey),need=Math.sqrt(MU/r)-vt,A=mul*st.F/m0;trim=Math.max(0.01,Math.min(1,need/(A*0.6)));}
+    const isp=st.vac-(st.vac-st.sl)*p,mdot=trim*thr*mul*st.F/(st.vac*G0);
+    F=mdot*isp*G0;f.fuel[f.stage]-=mdot*dt;
+    if(f.fuel[f.stage]<=0){f.fuel[f.stage]=0;
+      if(f.stage<a.info.length-1){if(f.stuck)return end(false,[`Stage ${f.stage+1} out of fuel`,"Stages could not separate (W-30 not handled); the upper stage was dragged down"]);
+        f.stage++;flog(`Stage separation, stage ${f.stage+1} ignition`);}
+      else flog("Final stage out of fuel");}
+  }
+  let mass=a.pay;for(let i=f.stage;i<a.info.length;i++)mass+=a.info[i].dry+f.fuel[i];
+  if(f.stuck&&f.stage+1<a.info.length)mass+=0;
+  const dx=Math.cos(f.pitch)*ux+Math.sin(f.pitch)*ex,dy=Math.cos(f.pitch)*uy+Math.sin(f.pitch)*ey;
+  const w=465*r/RE,rvx=f.vx-w*ex,rvy=f.vy-w*ey,v=Math.hypot(rvx,rvy);
+  const area=4+2*(st?st.s.n:1),q=0.5*rho*v*v,D=q*0.3*area;f.q=q;if(q>f.maxQ)f.maxQ=q;
+  const g=MU/(r*r);
+  let ax=(F*dx-(v?D*rvx/v:0))/mass-g*ux,ay=(F*dy-(v?D*rvy/v:0))/mass-g*uy;
+  f.vx+=ax*dt;f.vy+=ay*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;f.t+=dt;
+  f.temp+=((F>0?(f.heat?1100:640):300)-f.temp)*dt*0.08;
+  if(f.path.length<3000&&Math.floor(f.t*2)%4===0)f.path.push([f.x,f.y]);
+  const o=orbitOf(f.x,f.y,f.vx,f.vy),nh=Math.hypot(f.x,f.y)-RE;f.o=o;
+  // scheduled events
+  if(!f.active)for(const e of f.events){if(e.done)continue;
+    if(e.at.t&&f.t>=e.at.t){e.done=1;trigger(e.code);if(e.code==="W-21")f.heat=true;if(e.code==="W-12")f.shear=true;break;}
+    if(e.at.fuel0&&f.stage===0&&f.fuel[0]/a.info[0].fuel<e.at.fuel0){e.done=1;trigger(e.code);break;}
+    if(e.at.orbit&&f.orbit&&f.t-f.insT>=INS_DEPLOY){e.done=1;trigger(e.code);break;}}
+  if(f.shear)f.q=Math.max(f.q*1.6,78e3);
+  if(f.t>3&&nh<0)return end(false,["The rocket crashed"]);
+  const vr=f.vx*ux+f.vy*uy;
+  if(!f.orbit&&f.mode==="asc"&&f.stage<a.info.length-1&&o.rp-RE<m.peri-INS_CUT&&nh>=PARK&&vr>0&&o.ra-RE>=m.peri-1e3){
+    // early MECO: the lower stage already put apogee on target, so drop it (with its leftover fuel) and coast on the upper stage
+    if(f.stuck)return end(false,[`Stage ${f.stage+1} could not separate (W-30 not handled)`,"The upper stage was dragged down by the dead weight"]);
+    flog(`Early MECO · stage ${f.stage+1} has done its job, separating with fuel left`);f.fuel[f.stage]=0;f.stage=a.info.length-1;
+    f.events.forEach(e=>{if(e.at.fuel0&&!e.done)e.done=1;});}
+  if(!f.orbit&&f.mode==="asc"&&f.stage===a.info.length-1&&o.rp-RE<m.peri-INS_CUT&&nh>=PARK&&vr>0&&o.ra-RE>=m.peri-1e3){f.mode="coast";
+    flog(`SECO-1 · apogee now ${((o.ra-RE)/1000).toFixed(0)} km · coasting up to it`);}
+  if(!f.orbit&&f.mode==="coast"&&vr<=25){f.mode="circ";flog("Apogee · circularization burn");}
+  if(!f.orbit&&o.rp-RE>=Math.min(m.peri,nh)-INS_CUT){f.orbit=true;f.insT=f.t;f.mode="orbit";
+    const pk=(o.rp-RE)/1000,ak=(o.ra-RE)/1000,tk=m.peri/1000;f.onTarget=Math.abs(pk-tk)<=INS_TOL&&Math.abs(ak-tk)<=INS_TOL;
+    f.ins={pk,ak,tk,ok:f.onTarget};
+    flog(`ENGINE CUTOFF · orbit insertion ${pk.toFixed(0)} × ${ak.toFixed(0)} km (target ${tk} ± ${INS_TOL})`);
+    flog(f.onTarget?"On target: payload separation":"Off target: orbit outside tolerance");}
+  if(f.orbit&&f.t-f.insT>=INS_HOLD&&f.events.every(e=>e.done)&&!f.active){
+    const pk=f.ins.pk.toFixed(0),ak=f.ins.ak.toFixed(0);
+    if(!f.onTarget)return end("partial",[`Orbit reached, but ${pk} × ${ak} km is outside the target ${f.ins.tk} ± ${INS_TOL} km`,"The customer's payload is in the wrong orbit and must use its own fuel to fix it"]);
+    const reasons=[`Precise orbit insertion: ${pk} × ${ak} km (target ${f.ins.tk} ± ${INS_TOL} km)`];
+    if(f.antennaFail)reasons.push("But the antenna never deployed (W-40), so the satellite is silent");
+    return end(f.antennaFail?"partial":true,reasons);}
+  if(!f.orbit&&f.fuel.every(x=>x<=0)&&f.mode!=="coast"){
+    if(f.mode==="circ")return end(false,[`Out of fuel during the circularization burn: stuck in a ${Math.max(0,(o.rp-RE)/1000).toFixed(0)} × ${((o.ra-RE)/1000).toFixed(0)} km orbit`,`Target was ${m.peri/1000} km circular: not enough Δv`]);
+    if(o.rp-RE>70e3||vr<0)return end(false,[`Out of fuel with perigee at only ${Math.max(0,(o.rp-RE)/1000).toFixed(0)} km`,"Not enough Δv to reach orbit"]);}
+}
+function resolve(ok){const f=S.flight,c=f.active.code;f.active=null;
+  if(ok){flog(`${c} handled`);f.okFlash={code:c,until:performance.now()+1500};
+    if(c==="W-12"){f.shear=false;}
+    if(c==="W-21"){f.heat=false;}
+    if(c==="W-40"){}
+  }else{flog(`${c} NOT handled: ${WARN[c].fail}`);f.fails=(f.fails||0)+1;
+    if(c==="W-12"){f.shear=false;return end(false,[`W-12 wind shear warning not handled within ${RESP} seconds`,"Dynamic pressure went over 75 kPa and the structure broke up"]);}
+    if(c==="W-21"){f.heat=false;f.thrustMul[f.stage]*=0.7;}
+    if(c==="W-30"){f.stuck=true;}
+    if(c==="W-40"){f.antennaFail=true;}
+  }
+  f.handled=(f.handled||0)+(ok?1:0);
+}
+function end(ok,reasons){const f=S.flight;f.running=false;
+  const oo=f.o||{rp:RE,ra:RE};S.result={ok,reasons,log:f.log.slice(),maxQ:f.maxQ,t:f.t,handled:f.handled||0,total:f.events.filter(e=>e.done).length,rp:oo.rp,ra:oo.ra};
+  S.lock=true;setTimeout(()=>{S.lock=false;setPhase(5);},900);drawFlight();}
+let last=0;const COAST_WARP=150,ASC_WARP=14;
+function loop(now){const f=S.flight;if(!f||!f.running)return;if(TUT.open||INTRO_ST.open){last=now;requestAnimationFrame(loop);return;}const real=Math.min(0.05,(now-last)/1000);last=now;
+  if(f.active){f.active.left-=real;if(f.active.left<=0)resolve(false);}
+  const warp=f.active?0:f.mode==="coast"?COAST_WARP:f.mode==="orbit"?6:ASC_WARP,n=Math.ceil(warp*real/(f.mode==="coast"?0.25:0.02)); // flight pauses while the ground warning is open
+  for(let i=0;i<n&&f.running;i++)step(warp*real/n);
+  if(f.running){drawFlight();requestAnimationFrame(loop);}}
+function renderFlight(){
+  $("stage").innerHTML=`<div class="flight"><canvas id="fc"></canvas><div class="ground">
+    <h2 style="margin:0">Ground station panel</h2><div class="gauges" id="gauges"></div>
+    <div class="alert" id="alert"></div><div id="flog" style="font-family:var(--display);font-size:12px;color:var(--dim);overflow:hidden;flex:1"></div></div></div>`;
+  keysHint([[K("A D")+" / "+K("← →"),"nudge pitch (autopilot corrects)"],[K("Enter"),"respond"],[`On a warning: press what the Manual says within ${RESP} s; wrong key = start again`,""]]);
+  drawFlight();
+}
+function sky(h){const t=Math.min(1,h/70e3),c=(a,b)=>Math.round(a+(b-a)*t);return`rgb(${c(70,2)},${c(140,4)},${c(220,12)})`;}
+const stars=[...Array(140)].map(()=>[Math.random(),Math.random(),Math.random()]);
+function drawFlight(){const f=S.flight,c=$("fc");if(!c||!f)return;
+  const R=c.getBoundingClientRect();if(c.width!==Math.round(R.width)||c.height!==Math.round(R.height)){c.width=Math.round(R.width);c.height=Math.round(R.height);}
+  const x=c.getContext("2d"),W=c.width,H=c.height,r=Math.hypot(f.x,f.y),h=r-RE;
+  x.fillStyle=sky(h);x.fillRect(0,0,W,H);
+  const sa=Math.min(1,Math.max(0,(h-25e3)/40e3));x.fillStyle=`rgba(255,255,255,${sa})`;stars.forEach(([a,b,s])=>x.fillRect(a*W,b*H,s*2,s*2));
+  if(h<3000){x.fillStyle="#2b3a2a";x.fillRect(0,H-70+h/10,W,90);}
+  if(h>20e3){x.fillStyle="#123a6a";x.beginPath();x.ellipse(W/2,H*0.85+W*3+Math.min(H*0.12,h/2e4),W*3.2,W*3,0,Math.PI,2*Math.PI);x.fill();}
+  // rocket
+  x.save();x.translate(W*0.42,H*0.62);x.rotate(f.pitch);let yy=0;
+  for(let i=f.stage;i<f.a.info.length;i++){const s=f.a.info[i].s,w=(30+8*Math.min(s.n,5))*(0.88**i),hh=24+Math.sqrt(TANK[s.t].fuel)*s.k*4;
+    if(i===f.stage&&f.running&&!f.orbit&&f.mode!=="coast"&&f.fuel[f.stage]>0){const fl=40+Math.random()*30;const gr=x.createLinearGradient(0,0,0,fl);
+      gr.addColorStop(0,"#fff6c8");gr.addColorStop(.3,"#ff9a2a");gr.addColorStop(1,"rgba(255,60,0,0)");x.fillStyle=gr;x.beginPath();x.moveTo(-w*.4,yy);x.lineTo(0,yy+fl);x.lineTo(w*.4,yy);x.fill();}
+    x.fillStyle=ENG[s.e].color;x.fillRect(-w*.4,yy,w*.8,8);x.fillStyle=TANK[s.t].color;x.fillRect(-w/2,yy-hh,w,hh);yy-=hh;}
+  const sep=f.ins&&f.ins.ok?Math.max(0,Math.min(1,(f.t-f.insT-2)/10)):0;
+  if(!sep){x.fillStyle="#f4f6f8";x.beginPath();x.moveTo(-14,yy);x.quadraticCurveTo(0,yy-50,14,yy);x.fill();}
+  else{ // payload separation: fairing halves fall away, payload drifts ahead
+    const d=sep*90;x.fillStyle="#f4f6f8";
+    x.save();x.translate(-10-d*.5,yy-10);x.rotate(-sep*.9);x.beginPath();x.moveTo(-4,0);x.quadraticCurveTo(0,-45,10,-40);x.lineTo(10,0);x.fill();x.restore();
+    x.save();x.translate(10+d*.5,yy-10);x.rotate(sep*.9);x.beginPath();x.moveTo(4,0);x.quadraticCurveTo(0,-45,-10,-40);x.lineTo(-10,0);x.fill();x.restore();
+    x.save();x.translate(0,yy-26-d*1.6);x.fillStyle="#d9dde3";x.fillRect(-8,-8,16,16);x.fillStyle="#3b7fd9";x.fillRect(-26,-5,16,10);x.fillRect(10,-5,16,10);x.restore();}
+  x.restore();
+  // minimap
+  const MR=80,mx=W-MR-16,my=MR+16,k=MR*0.6/RE;x.fillStyle="rgba(5,10,18,.85)";x.beginPath();x.arc(mx,my,MR+8,0,7);x.fill();
+  x.fillStyle="#1f5fa8";x.beginPath();x.arc(mx,my,RE*k,0,7);x.fill();
+  x.setLineDash([3,4]);x.strokeStyle="rgba(61,220,151,.9)";x.lineWidth=1.5;x.beginPath();x.arc(mx,my,(RE+S.mission.peri)*k,0,7);x.stroke();x.setLineDash([]);
+  x.strokeStyle="#ff7a1a";x.lineWidth=2;x.beginPath();f.path.forEach(([a,b],i)=>i?x.lineTo(mx+a*k,my-b*k):x.moveTo(mx+a*k,my-b*k));x.stroke();
+  x.fillStyle="#fff";x.font="600 18px Chakra Petch";x.fillText(`T+ ${f.t.toFixed(0)} s   STAGE ${f.stage+1}`,16,30);
+  const ML={asc:"ASCENT BURN",coast:`COASTING TO APOGEE · TIME ×${COAST_WARP}`,circ:"CIRCULARIZATION BURN",orbit:"IN ORBIT"}[f.mode]||"";
+  x.font="600 15px Chakra Petch";x.fillStyle="#3ddc97";x.fillText(`TARGET ${S.mission.peri/1000} km circular (green ring)`,16,54);
+  x.fillStyle=f.mode==="coast"?"#4da3ff":"#ffcc33";x.fillText(ML,16,76);
+  if(f.ins){const I=f.ins,bw=Math.min(560,W-40),bx=(W-bw)/2,by=H*0.12,col=I.ok?"#3ddc97":"#ff4d5e";
+    x.fillStyle="rgba(5,10,18,.86)";x.fillRect(bx,by,bw,150);x.strokeStyle=col;x.lineWidth=3;x.strokeRect(bx,by,bw,150);
+    x.textAlign="center";x.fillStyle=col;x.font="700 34px Chakra Petch";x.fillText(I.ok?"ORBIT INSERTION ✓":"ORBIT INSERTION ✗",W/2,by+44);
+    x.fillStyle="#fff";x.font="600 20px Chakra Petch";x.fillText(`${I.pk.toFixed(0)} × ${I.ak.toFixed(0)} km   ·   target ${I.tk} ± ${INS_TOL} km`,W/2,by+82);
+    x.fillStyle="#c6d1dc";x.font="500 16px Chakra Petch";x.fillText(I.ok?(f.t-f.insT<2?"Engine cutoff: on target":"Payload separation · "+S.mission.sep):"Engine cutoff: outside the target orbit",W/2,by+118);
+    x.textAlign="left";}
+  // gauges, labelled with their meaning
+  const o=f.o||{rp:RE,ra:RE},fuelPct=f.a.info[f.stage]?f.fuel[f.stage]/f.a.info[f.stage].fuel*100:0;
+  const vals=[(h/1000).toFixed(1),Math.hypot(f.vx,f.vy).toFixed(0),o.rp<RE?"—":((o.rp-RE)/1000).toFixed(0),fuelPct.toFixed(0),o.esc?"∞":((o.ra-RE)/1000).toFixed(0),(f.pitch*180/Math.PI).toFixed(0),(f.q/1000).toFixed(1),f.temp.toFixed(0)];
+  const act=f.active,hot=act?WARN[act.code].gauge:"";
+  const g=$("gauges");if(g)g.innerHTML=vals.map((v,i)=>`<div class="gauge ${GAUGES[i][0]===hot?"hot":""}"><small>${GAUGES[i][0]} ${GTITLE[i][0]}</small><b>${v}<span class="gu">${GTITLE[i][1]}</span></b></div>`).join("");
+  const al=$("alert");if(al){if(act){const wv=WARN[act.code];
+      al.className="alert on";al.style.borderColor=wv.lc;
+      al.innerHTML=`<span style="color:${wv.lc}">● ${wv.light} light</span><span class="code" style="color:${wv.lc}">${act.code}</span>
+        <span class="timer">${Math.max(0,act.left).toFixed(1)} s left</span><span class="input">${act.wrong?`Attempt ${act.wrong+1} · `:""}Input: ${act.input.map(x=>x==="ENTER"?"Enter":x).join(" ")||"—"}</span>${act.wrong?`<span class="wrong"><b>✗ Wrong (${act.tried.map(x=>x==="ENTER"?"Enter":x).join(" ")}).</b> ${act.why}<br>Input cleared: press the full sequence again from the first key. The timer keeps running.</span>`:""}`;}
+    else if(f.okFlash&&performance.now()<f.okFlash.until){al.className="alert";al.style.borderColor="var(--ok)";al.innerHTML=`<span style="color:var(--ok)">● Fixed</span><span class="code" style="color:var(--ok)">✓ ${f.okFlash.code}</span><span style="color:var(--dim)">Handled in time. Flight continues.</span>`;}
+    else{al.className="alert";al.style.borderColor="";al.innerHTML=`<span style="color:var(--ok)">● All systems nominal</span><span style="color:var(--dim)">When a warning appears, read the code, light colour and highlighted gauge to the Manual reader.</span>`;}}
+  const fl=$("flog");if(fl)fl.innerHTML=f.log.slice(-8).join("<br>");
+}
+/* ---------- phase 4 result ---------- */
+const ORBIT_SHOW=10;let orbitRAF=null,orbitTO=null;
+function stopOrbit(){if(orbitRAF)cancelAnimationFrame(orbitRAF);if(orbitTO)clearTimeout(orbitTO);orbitRAF=orbitTO=null;}
+function backToMissions(){stopOrbit();S.flight=null;S.mission=null;setPhase(0);}
+function renderOrbit(){const R=S.result,m=S.mission,t0=performance.now(),tk=m.peri/1000;
+  const per=Math.round((R.rp-RE)/1000),apo=Math.round((R.ra-RE)/1000),dev=Math.max(Math.abs(per-tk),Math.abs(apo-tk));
+  $("stage").innerHTML=`<div class="orbitwrap"><canvas id="oc"></canvas>
+    <div class="orbitcard"><span style="color:var(--dim);font-family:var(--display);letter-spacing:.14em;font-size:12px">LAUNCH SUCCESS · ${m.code} ${m.name}</span>
+      <h3>SATELLITE IN ORBIT</h3>
+      <div class="row"><span>Target orbit</span><b>${tk} km circular</b></div>
+      <div class="row"><span>Achieved</span><b>${per} × ${apo} km</b></div>
+      <div class="row"><span>Accuracy</span><b style="color:var(--ok)">within ${dev} km ✓</b></div>
+      <div class="row"><span>Position</span><b style="text-align:right;max-width:240px;font-size:14px">${m.slot}</b></div>
+      <div class="row"><span>Warnings handled</span><b>${R.handled} / ${R.total}</b></div>
+      <div class="row"><span>Budget left</span><b>${S.reserve} / ${m.budget}</b></div>
+      <p style="margin:6px 0 0;color:var(--dim);font-size:14px;line-height:1.5">Real world: ${m.real}</p></div>
+    <div class="orbitback">Back to mission select in <b id="ocLeft">${ORBIT_SHOW}</b> s · <kbd>Enter</kbd> now</div></div>`;
+  keysHint([[K("Enter"),"back to mission select now"]]);
+  const c=$("oc"),stars=[...Array(220)].map(()=>[Math.random(),Math.random(),Math.random()]);
+  const e=(R.ra-R.rp)/(R.ra+R.rp);
+  function sat(x,X,Y,ang,kind,unf){x.save();x.translate(X,Y);x.rotate(ang);
+    if(kind==="cube"){x.fillStyle="#d9dde3";x.fillRect(-5,-5,10,10);x.strokeStyle="#9aa6b2";x.strokeRect(-5,-5,10,10);x.strokeStyle="#fff";x.beginPath();x.moveTo(5,0);x.lineTo(13,-4);x.stroke();}
+    else if(kind==="wing"){x.fillStyle="#d9dde3";x.fillRect(-6,-9,12,18);const L=8+unf*26;x.fillStyle="#3b7fd9";x.fillRect(-6-L,-6,L,12);x.fillRect(6,-6,L,12);
+      x.strokeStyle="rgba(255,255,255,.35)";for(let i=1;i<4;i++){x.beginPath();x.moveTo(-6-L*i/4,-6);x.lineTo(-6-L*i/4,6);x.moveTo(6+L*i/4,-6);x.lineTo(6+L*i/4,6);x.stroke();}}
+    else if(kind==="iss"){x.fillStyle="#c9cfd6";x.fillRect(-26,-2,52,4);x.fillRect(-6,-6,12,12);x.fillStyle="#d1a73b";[-24,-16,16,24].forEach(u=>{x.fillRect(u-3,-16,6,12);x.fillRect(u-3,4,6,12);});}
+    else{x.fillStyle="#e8e8e8";x.beginPath();x.moveTo(-8,-7);x.lineTo(8,-4);x.lineTo(8,4);x.lineTo(-8,7);x.closePath();x.fill();x.fillStyle="#3b7fd9";x.fillRect(-20,-3,10,6);x.fillRect(10,-3,10,6);}
+    x.restore();}
+  function frame(now){if(S.phase!==5||!$("oc"))return stopOrbit();
+    const el=(now-t0)/1000;$("ocLeft").textContent=Math.max(0,Math.ceil(ORBIT_SHOW-el));
+    const Rc=c.getBoundingClientRect();if(c.width!==Math.round(Rc.width)||c.height!==Math.round(Rc.height)){c.width=Math.round(Rc.width);c.height=Math.round(Rc.height);}
+    const x=c.getContext("2d"),W=c.width,H=c.height;x.fillStyle="#02040a";x.fillRect(0,0,W,H);
+    stars.forEach(([u,v,z])=>{x.fillStyle=`rgba(255,255,255,${.3+.7*z*(.6+.4*Math.sin(now/600+u*40))})`;x.fillRect(u*W,v*H,z*2,z*2);});
+    // not to scale: altitude exaggerated so the orbit is visible around Earth
+    const Rv=Math.min(W*0.13,H*0.19),orbR=Rv*(1.45+tk/1400),ev=Math.min(0.08,e*6),av=orbR,bv=av*Math.sqrt(1-ev*ev);
+    const cx=Math.max(W*0.66,560+av),cy=H*0.54,fx=cx-av*ev;
+    const g=x.createRadialGradient(fx-Rv*.35,cy-Rv*.35,Rv*.1,fx,cy,Rv);g.addColorStop(0,"#4fa3ff");g.addColorStop(.7,"#1f5fa8");g.addColorStop(1,"#0b2b55");
+    x.fillStyle=g;x.beginPath();x.arc(fx,cy,Rv,0,7);x.fill();
+    x.strokeStyle="rgba(120,190,255,.35)";x.lineWidth=5;x.beginPath();x.arc(fx,cy,Rv+3,0,7);x.stroke();
+    x.fillStyle="rgba(223,231,239,.8)";x.font="600 13px Chakra Petch, sans-serif";x.textAlign="center";x.fillText("EARTH",fx,cy+4);
+    // target ring (green dashed) and achieved orbit (white)
+    x.setLineDash([6,8]);x.strokeStyle="rgba(61,220,151,.7)";x.lineWidth=2;x.beginPath();x.arc(fx,cy,orbR,0,7);x.stroke();x.setLineDash([]);
+    x.strokeStyle="rgba(255,255,255,.35)";x.lineWidth=1.5;x.beginPath();x.ellipse(cx,cy,av,bv,0,0,7);x.stroke();
+    x.fillStyle="#3ddc97";x.font="600 14px Chakra Petch, sans-serif";x.fillText(`TARGET ORBIT ${tk} km`,fx,cy+orbR+26);
+    // payload moving along the orbit (Kepler's equation)
+    const M=(el/7)*2*Math.PI;let E=M;for(let i=0;i<8;i++)E=E-(E-ev*Math.sin(E)-M)/(1-ev*Math.cos(E));
+    const P=(EE)=>[cx-av*Math.cos(EE),cy-bv*Math.sin(EE)],[sx,sy]=P(E),ang=Math.atan2(-bv*Math.cos(E),av*Math.sin(E));
+    if(m.code==="M-3"){const [ix,iy]=P(E+0.35);sat(x,ix,iy,Math.atan2(-bv*Math.cos(E+.35),av*Math.sin(E+.35)),"iss");
+      x.fillStyle="#fff";x.font="600 13px Chakra Petch, sans-serif";x.fillText("ISS",ix,iy-24);
+      x.setLineDash([2,4]);x.strokeStyle="rgba(255,204,51,.8)";x.beginPath();x.moveTo(sx,sy);x.lineTo(ix,iy);x.stroke();x.setLineDash([]);}
+    if(m.code==="M-1"){for(let j=3;j>=1;j--){const spread=Math.min(1,el/4)*0.11*j,[qx,qy]=P(E-spread);sat(x,qx,qy,ang,"cube");}sat(x,sx,sy,ang,"cube");}
+    else sat(x,sx,sy,ang,m.code==="M-2"?"wing":"capsule",Math.min(1,el/3));
+    const ph=(now/900)%1;x.strokeStyle=`rgba(61,220,151,${1-ph})`;x.lineWidth=2;x.beginPath();x.arc(sx,sy,12+ph*30,0,7);x.stroke();
+    x.fillStyle="#fff";x.font="600 14px Chakra Petch, sans-serif";x.fillText(m.code,sx,sy+(sy<cy?-26:34));
+    x.textAlign="right";x.fillStyle="rgba(127,144,163,.8)";x.font="500 13px Chakra Petch, sans-serif";x.fillText("not to scale: altitude exaggerated",W-16,H-80);x.textAlign="left";
+    orbitRAF=requestAnimationFrame(frame);}
+  stopOrbit();orbitRAF=requestAnimationFrame(frame);orbitTO=setTimeout(()=>{if(S.phase===5)backToMissions();},ORBIT_SHOW*1000);
+}
+function renderResult(){const R=S.result,ok=R.ok===true,part=R.ok==="partial";
+  if(ok&&S.mission&&R.rp)return renderOrbit();
+  const title=ok?"MISSION SUCCESS":part?"PARTIAL SUCCESS":"MISSION FAILED",col=ok?"var(--ok)":part?"var(--warn)":"var(--bad)";
+  const chain=[...R.reasons];
+  if(S.delays)chain.push(`Waiting and scrubs cost ${S.delays} day${S.delays===1?"":"s"} of delay, paid from the budget`);
+  $("stage").innerHTML=`<div class="result"><h3 style="color:${col}">${title}</h3>
+    <div><h2>What happened</h2><ol>${chain.map(c=>`<li>${c}</li>`).join("")}</ol></div>
+    <div><h2>Budget breakdown (budget ${S.mission?S.mission.budget:"—"})</h2><p style="font-family:var(--display);font-size:14px;line-height:1.8">${(S.ledger||[]).map(([l,v])=>`${l}  −${v}`).join("<br>")||"—"}<br><b>Remaining ${S.reserve}</b></p></div>
+    <div><h2>Team performance</h2><p>Warnings handled ${R.handled} / ${R.total} · Max dynamic pressure ${(R.maxQ/1000).toFixed(1)} kPa · Flight time ${R.t.toFixed(0)} s · Budget left ${S.reserve}</p></div>
+    <div><h2>Flight log</h2><p style="font-family:var(--display);font-size:13px;color:var(--dim);line-height:1.7">${R.log.slice(-12).join("<br>")}</p></div>
+    <div class="real" style="font-size:14px">Every real flight gets a post-flight review, and failures are studied so they aren't repeated. What would your team change next time?</div></div>`;
+  keysHint([[K("Enter"),"back to mission select"]]);
+}
+
+/* ================= keyboard (left player only) ================= */
+const MAP={w:"U",arrowup:"U",s:"D",arrowdown:"D",a:"L",arrowleft:"L",d:"R",arrowright:"R",enter:"E"," ":"E"};
+addEventListener("keydown",ev=>{if(TUT.open)return tutKey(ev);if(INTRO_ST.open)return introKey(ev);const k=MAP[ev.key.toLowerCase()];if(!k)return;ev.preventDefault();if(ev.repeat&&(k==="E"||(S.phase===4&&S.flight&&S.flight.active)))return;
+  if(S.lock)return; // ignore input while a phase transition is pending
+  [kMission,kAssembly,kWeather,kReady,kFlight,kResult][S.phase](k,ev.key.toLowerCase());});
+function kMission(k){if(k==="L"||k==="U")S.mi=(S.mi+MIS.length-1)%MIS.length;if(k==="R"||k==="D")S.mi=(S.mi+1)%MIS.length;
+  if(k==="E"){S.mission=MIS[S.mi];S.stages=[{e:"A",n:1,t:"T1",k:1}];S.cur={r:0,c:0};S.errors=null;S.reserve=S.mission.budget;S.delays=0;S.ledger=[];setPhase(1);return;}renderMission();}
+function kAssembly(k){const rows=asmRows(),row=rows[S.cur.r];
+  if(S.edit&&row.type==="stage"){const s=S.stages[row.i],f=FIELDS[S.cur.c],d=k==="U"?1:k==="D"?-1:0;
+    if(f==="e"){const ks=Object.keys(ENG);s.e=ks[(ks.indexOf(s.e)+d+ks.length)%ks.length];}
+    if(f==="t"){const ks=Object.keys(TANK);s.t=ks[(ks.indexOf(s.t)+d+ks.length)%ks.length];}
+    if(f==="n")s.n=Math.max(1,Math.min(9,s.n+d));if(f==="k")s.k=Math.max(1,Math.min(6,s.k+d));
+    if(k==="E")S.edit=false;if(d)S.errors=null;renderAssembly();return;}
+  if(k==="U")S.cur.r=Math.max(0,S.cur.r-1);if(k==="D")S.cur.r=Math.min(rows.length-1,S.cur.r+1);
+  if(k==="L")S.cur.c=Math.max(0,S.cur.c-1);if(k==="R")S.cur.c=Math.min(3,S.cur.c+1);
+  if(k==="E"){if(row.type==="stage")S.edit=true;
+    if(row.type==="add"&&S.stages.length<3){S.stages.push({e:"D",n:1,t:"T1",k:1});S.errors=null;S.cur.r++;}
+    if(row.type==="del"&&S.stages.length>1){S.stages.pop();S.errors=null;S.cur.r=Math.max(0,S.cur.r-1);}
+    if(row.type==="check"){const c=check(S.stages,S.mission);S.errors=c.errors;
+      if(!c.errors.length){S.reserve=S.mission.budget;S.ledger=[];spend("Hardware (engines + tanks + payload integration)",c.a.hw);spend(`Propellant & loading (${Math.round(c.a.fuelT)} t)`,c.a.prop);S.scrubFee=scrubCost(c.a.fuelT);S.weather=makeWeather(S.mi+1);S.day=0;S.scrubs={};S.wcur={d:0,s:0};
+        renderAssembly();S.lock=true;setTimeout(()=>{S.lock=false;setPhase(2);},900);return;}}}
+  renderAssembly();}
+function kWeather(k){const c=S.wcur;if(k==="L")c.d=Math.max(S.day,c.d-1);if(k==="R")c.d=Math.min(6,c.d+1);
+  if(k==="U")c.s=Math.max(0,c.s-1);if(k==="D")c.s=Math.min(3,c.s+1);
+  if(k==="E"){if(S.scrubs[c.d+"-"+c.s])return;const wait=c.d-S.day;
+    if(wait)spend(`Pad standby, ${wait} day${wait===1?"":"s"}`,wait*STANDBY);S.delays=(S.delays||0)+wait;S.day=c.d;
+    const fail=r=>{S.result={ok:false,reasons:r,log:[],maxQ:0,t:0,handled:0,total:0};setPhase(5);};
+    if(c.d+1>S.mission.deadline)return fail([`Day ${c.d+1} is past the ${S.mission.code} deadline (day ${S.mission.deadline})`,"The customer's satellite missed its window and the contract was cancelled"]);
+    if(S.reserve<0)return fail(["Pad standby fees used up the whole budget"]);
+    const w=S.weather[c.d][c.s],bad=judge(w);
+    if(bad.length){S.scrubs[c.d+"-"+c.s]=1;spend(`SCRUB day ${c.d+1} ${SLOTS[c.s]}`,S.scrubFee);S.delays++;
+      if(S.reserve<0)return fail(["Too many scrubs: the budget ran out"]);
+      render();return;}
+    if(w.wind>=22)spend("Marginal wind: extra weather balloons",MARGINAL);
+    if(S.reserve<0)return fail(["Out of budget: can't pay for launch day"]);
+    goReady(w);return;}
+  renderWeather();}
+function kFlight(k){const f=S.flight;if(!f||!f.running)return;
+  if(f.active){if(performance.now()<f.active.guard)return; // ignore keys still held from steering
+    const act=f.active,key=k==="E"?"ENTER":k==="L"?"A":k==="R"?"D":k==="U"?"W":"S",need=WARN[act.code].keys,pos=act.input.length,nm=x=>x==="ENTER"?"Enter":x;
+    if(need[pos]!==key){ // wrong: explain why, clear the input so the next try starts fresh; the timer keeps running
+      act.wrong++;
+      act.why=!need.includes(key)?`You pressed ${nm(key)}. ${nm(key)} isn't part of the ${act.code} procedure.`
+        :pos===0?`You pressed ${nm(key)} first. That key is used in ${act.code}, but not as the first step.`
+        :`You pressed ${nm(key)} as key ${pos+1}. That isn't the next step: check the order in the Manual.`;
+      act.tried=act.input.concat(key);act.input=[];drawFlight();return;}
+    act.input.push(key);if(act.input.length===need.length){resolve(true);f.cool=performance.now()+700;}else drawFlight();return;}
+  if(f.cool&&performance.now()<f.cool)return; // swallow accidental extra presses right after a fix
+  if(k==="L")f.manual=Math.max(-0.08,f.manual-0.03);if(k==="R")f.manual=Math.min(0.08,f.manual+0.03);}
+function kResult(k){if(k==="E")backToMissions();}
+
+/* ================= manual (right player, mouse only) ================= */
+function engRows(){return Object.entries(ENG).map(([k,e])=>`<tr><td><span class="swatch" style="background:${e.color}"></span><b>${k}</b> ${e.name}</td><td>${e.desc}</td><td class="n">${e.F/1000}</td><td class="n">${e.sl} / ${e.vac}</td><td class="n">${e.m}</td><td class="n">${e.cost}</td></tr>`).join("");}
+function tankRows(){return Object.entries(TANK).map(([k,t])=>`<tr><td><span class="swatch" style="background:${t.color}"></span><b>${k}</b> ${t.name}</td><td>${t.desc}</td><td class="n">${t.fuel}</td><td class="n">${t.dry}</td><td class="n">${t.cost}</td></tr>`).join("");}
+function comboPage(m){const rows=COMBOS[m.code].map(c=>{const st=c.map(s=>({e:s.e,n:s.n,t:s.t,k:s.k})),r=check(st,m);
+  const desc=c.map((s,i)=>`Stage ${i+1}: ${s.e}×${s.n} + ${s.t}×${s.k}`).join("<br>");
+  return `<tr><td>${desc}</td><td class="n">${Math.round(r.a.total)}</td><td class="n">${r.a.twr[0].toFixed(2)}</td><td class="n">${r.a.cost}</td><td>${r.errors.length?`<span class="no">✗ ${r.errors.join(" ")}</span>`:'<span class="ok">✓ passes inspection</span>'}</td></tr>`;}).join("");
+  return `<div class="sec">PART 3 · QUICK DESIGNS</div><h1>${m.code} ${m.name}</h1><p>Requirements: Δv ≥ ${m.need} m/s, liftoff thrust-to-weight ≥ 1.15, cost ≤ ${m.budget} (hardware + propellant).<br>The number after "×" is the count. Passing inspection doesn't guarantee orbit: you still have to handle warnings in flight.</p>
+   <table><tr><th>Design (bottom to top)</th><th>Δv m/s</th><th>T/W</th><th>Cost</th><th>Inspection</th></tr>${rows}</table>
+   <p class="src">Cost here = hardware + propellant. Leave money for pad standby and possible scrubs (see Budget page).</p>`;}
+const PAGES=[
+ {id:"toc",title:"Contents",html:()=>`<div class="sec">MISSION CONTROL MANUAL</div><h1>Contents</h1>
+   <p>You can't see the game screen. Ask the Engineer to describe the codes, colours and numbers they see, then look them up here.</p>
+   <table>${PAGES.slice(1).map((p,i)=>`<tr><td class="n">${i+2}</td><td><a data-go="${p.id}">${p.title}</a></td></tr>`).join("")}</table>`},
+ {id:"emg",title:"Emergency codes (W codes)",html:()=>`<div class="sec">EMERGENCY</div><h1>Emergency codes</h1><p>Each warning gives you <b>${RESP} seconds</b>, and the flight pauses while you respond. Read the "Press" column straight to the Engineer.</p>
+   <table><tr><th>Code</th><th>Light</th><th>Press</th><th>Problem</th></tr>${Object.entries(WARN).map(([c,w])=>`<tr><td class="n"><b>${c}</b></td><td>${w.light}</td><td><b class="k" style="font-family:var(--display);color:var(--tab);font-size:18px">${w.say}</b></td><td>${w.name}</td></tr>`).join("")}</table>
+   <p class="src">A wrong key clears the input and the screen says why it was wrong; just press the full sequence again from the first key before time runs out. It only fails when the timer hits zero. Details are on the Part 6 pages.</p>`},
+ {id:"mis",title:"Part 1 · Missions",html:()=>`<div class="sec">PART 1</div><h1>Missions</h1><p>Ask the Engineer to read the mission code (M-1, M-2, M-3). <b>Note each mission's deadline</b>: you'll need it when choosing the launch day.</p>
+   <table><tr><th>Code</th><th>Payload</th><th>Mass</th><th>Target orbit</th><th>Budget</th><th>Deadline</th></tr>${MIS.map(m=>`<tr><td class="n"><b>${m.code}</b> ${m.name}</td><td>${m.req}</td><td class="n">${m.payload} t</td><td class="n">${m.peri/1000} km ± ${INS_TOL}<br><span class="src">${m.orbit.split(",")[0]}</span></td><td class="n">${m.budget}</td><td class="n">Day ${m.deadline}</td></tr>`).join("")}</table>
+   <p>Completing <b>any one</b> mission counts as a successful launch. Success means putting the payload into its <b>target orbit, within ± ${INS_TOL} km</b>, with a working antenna.</p>
+   <h3>Where each payload goes</h3><table>${MIS.map(m=>`<tr><td><b>${m.code}</b></td><td>${m.orbit}. ${m.slot}.<br><span class="src">Real world: ${m.real}</span></td></tr>`).join("")}</table>
+   <p class="src">Mass includes the dispenser and fairing. CubeSat mass limits: 1U 2.00 kg, 3U 6.00 kg, 6U 12.00 kg (CubeSat Design Specification Rev 14). ISS orbit about 412 × 420 km (NASA, Sept. 2025). Rideshare SSO altitudes from SpaceX Transporter mission reports (NASASpaceflight, eoPortal).</p>`},
+ {id:"eng",title:"Part 2 · Parts: engines",html:()=>`<div class="sec">PART 2</div><h1>Engines</h1><p>The Engineer only sees the colour and the letter.</p>
+   <table><tr><th>Code</th><th>Looks like</th><th>Thrust kN</th><th>Isp s (sea level / vacuum)</th><th>Mass t</th><th>Price</th></tr>${engRows()}</table>
+   <h3>How to choose</h3><p>Stage 1 has to push the whole rocket through thick air, so use high-thrust <b>B</b>. Upper stages work in vacuum, so use efficient <b>C</b> or <b>D</b>. D is very inefficient at sea level: never put it on stage 1.</p>
+   <p class="src">Engine numbers are made up for teaching; they are not real rocket data.</p>`},
+ {id:"tank",title:"Part 2 · Parts: fuel tanks",html:()=>`<div class="sec">PART 2</div><h1>Fuel tanks</h1>
+   <table><tr><th>Code</th><th>Looks like</th><th>Fuel t</th><th>Empty t</th><th>Price</th></tr>${tankRows()}</table>
+   <p>"Tanks" is how many tanks are stacked in one stage. More tanks = more Δv, but a heavier rocket at liftoff.</p>
+   <p><b>Tank design also affects the budget:</b> more fuel means a higher propellant bill and a more expensive scrub. See the Budget page.</p><p class="src">Made-up teaching values.</p>`},
+ ...MIS.map(m=>({id:"combo-"+m.code,title:`Part 3 · Quick designs ${m.code}`,html:()=>comboPage(m)})),
+ {id:"err",title:"Part 4 · Fault codes (E codes)",html:()=>`<div class="sec">PART 4</div><h1>Inspection fault codes</h1><p>After INSPECT, a red light means that check failed. Ask the Engineer which codes are red.</p>
+   <table><tr><th>Code</th><th>Meaning</th><th>How to fix</th></tr>${Object.entries(ERR).map(([c,e])=>`<tr><td class="n"><b>${c}</b></td><td>${e.t}</td><td>${e.fix}</td></tr>`).join("")}</table>`},
+ {id:"wx",title:"Part 5 · Weather",html:()=>`<div class="sec">PART 5</div><h1>Reading the weather grid</h1>
+   <p>Each slot shows an icon and four numbers:</p>
+   <table><tr><th>Symbol</th><th>Meaning</th><th>Unit</th><th class="ok">GO</th><th class="no">NO-GO</th></tr>
+   <tr><td>①</td><td>Peak wind at liftoff</td><td>kt (knots)</td><td>≤ 29</td><td>&gt; 29</td></tr>
+   <tr><td>②</td><td>Temperature</td><td>°F</td><td>49–94</td><td>&lt; 49 or &gt; 94</td></tr>
+   <tr><td>③</td><td>Nearest lightning</td><td>nmi (— = none)</td><td>— or ≥ 10</td><td>&lt; 10</td></tr>
+   <tr><td>④</td><td>Cumulus clouds with freezing tops</td><td>nmi (— = none)</td><td>— or ≥ 10</td><td>&lt; 10</td></tr></table>
+   <p>One NO-GO number is enough to <b>scrub</b> the launch.</p>
+   <h3>Watch out</h3><p>① between 22 and 29 is still GO, but a <b>W-12 wind shear</b> warning is likely in flight, and it costs an extra ${MARGINAL} for additional weather balloons.</p>
+   <p><b>Launching after the mission deadline = mission failed.</b> Each mission has a different deadline (see Missions). For costs, see the Budget page.</p>
+   <p>Conversions: 29 kt ≈ 15 m/s; 49°F ≈ 9°C; 94°F ≈ 34.5°C; 10 nmi ≈ 18.5 km.</p>
+   <p class="src">Limits based on NASA Artemis II Weather Criteria (wind, temperature) and NASA Falcon 9 Crew Dragon Launch Weather Criteria (lightning, cumulus within 10 nmi). Real rules vary with measurement height and humidity; the game uses one simplified value.</p>`},
+ {id:"bud",title:"Part 5 · Budget: date, weather, tanks",html:()=>`<div class="sec">PART 5</div><h1>Budget</h1>
+   <p>Money isn't only spent on parts. Launch date, weather and fuel tank design all eat into the budget:</p>
+   <table><tr><th>Item</th><th>Affected by</th><th>Cost</th></tr>
+   <tr><td>Hardware</td><td>Engines, tanks, payload integration</td><td>See Parts pages</td></tr>
+   <tr><td>Propellant &amp; loading</td><td><b>Tank design</b>: more fuel costs more</td><td class="n">1 per 40 t of fuel (rounded up)</td></tr>
+   <tr><td>Pad standby</td><td><b>Launch date</b>: the later you launch, the more you pay</td><td class="n">${STANDBY} per day waited</td></tr>
+   <tr><td>Scrub</td><td><b>Weather</b> + <b>tank design</b>: fuel has to be drained, and cryogenic fuel boils off</td><td class="n">3 + 1 per 60 t of fuel</td></tr>
+   <tr><td>Marginal weather</td><td><b>Weather</b>: ① wind 22–29 kt</td><td class="n">${MARGINAL}</td></tr></table>
+   <h3>Deadlines</h3><table><tr><th>Mission</th><th>Deadline</th></tr>${MIS.map(m=>`<tr><td><b>${m.code}</b> ${m.name}</td><td class="n">Day ${m.deadline}</td></tr>`).join("")}</table>
+   <p>Tip: first find the GO slots before the deadline, then pick the one with the fewest days of waiting. The bigger your tanks, the more each scrub hurts.</p>
+   <p class="src">Real world: propellant is usually a tiny share of launch cost (often under 1%). The expensive parts are the rocket itself, the pad and the team's time. When a launch is scrubbed, cryogenic propellants like liquid oxygen must be drained or left to boil off and the launch rescheduled, which is why every scrub is costly. Rates are game values.</p>`},
+ ...Object.entries(WARN).map(([c,w])=>({id:"w-"+c,title:`Part 6 · ${c} ${w.name}`,html:()=>`<div class="sec">PART 6 · FLIGHT PROCEDURES</div><h1>${c} ${w.name}</h1>
+   <div class="step">Press: <b class="k">${w.say}</b></div>
+   <p><b>Light:</b> ${w.light}  <b>Highlighted gauge:</b> ${w.gauge}</p><p><b>Why:</b> ${w.why}</p><p><b>If not handled:</b> ${w.fail}</p><p><b>Real world:</b> ${w.real}</p>
+   ${c==="W-40"?'<p class="src">CubeSat 101 recommends two burn wires for deployable parts. Real CubeSats may not transmit radio signals for the first 45 minutes after deployment (CDS Rev 14).</p>':""}`})),
+ {id:"gauge",title:"Part 6 · Gauge key",html:()=>`<div class="sec">PART 6</div><h1>Ground station gauges</h1><p>The Engineer's gauges show a number, a short title and a unit. This page explains them in more detail.</p>
+   <table><tr><th>No.</th><th>Meaning</th><th>Unit</th></tr>${GAUGES.map(g=>`<tr><td>${g[0]}</td><td>${g[1]}</td><td>${g[2]}</td></tr>`).join("")}</table>
+   <p>Orbit: when ③ perigee and ⑤ apogee both sit on the mission's target altitude, the engine shuts down. That's orbit insertion.</p>`},
+ {id:"profile",title:"Part 6 · How the rocket reaches its orbit",html:()=>`<div class="sec">PART 6</div><h1>Flight profile</h1>
+   <p>The flight computer flies the rocket to the exact target orbit in three phases. Watch for them in the flight log:</p>
+   <table><tr><th>Phase</th><th>What happens</th><th>Gauges</th></tr>
+   <tr><td><b>1 · Ascent burn</b></td><td>Stage 1, then the upper stage, burn until the highest point of the orbit (apogee) reaches the target altitude. Then the engine cuts off (SECO-1).</td><td>⑤ apogee climbs to the target</td></tr>
+   <tr><td><b>2 · Coast</b></td><td>Engine off. The rocket glides up to apogee. The game speeds time up here.</td><td>① altitude rises, ⑤ stays put</td></tr>
+   <tr><td><b>3 · Circularization burn</b></td><td>At apogee the upper stage restarts and burns sideways to raise the low side of the orbit (perigee) up to the target. It throttles down at the end for precision.</td><td>③ perigee climbs to meet ⑤</td></tr>
+   <tr><td><b>Orbit insertion</b></td><td>Engine cutoff. If perigee and apogee are both within ± ${INS_TOL} km of the target, the payload separates. A few seconds later, check its antenna (W-40).</td><td>③ ≈ ⑤ ≈ target</td></tr></table>
+   <p>If stage 1 is so powerful that it puts apogee on target by itself, it shuts down early and separates with fuel left over (<b>early MECO</b>). Then the upper stage does the rest alone, which is why the upper stage needs enough Δv of its own (E-05).</p>
+   <h3>What can go wrong</h3><p>Not enough Δv (E-02) or too small an upper stage (E-05) → the fuel runs out before the circularization burn finishes. An upper stage that's too weak (E-04) can't hold its altitude and falls back.</p>
+   <p>Pressing <b>A / D</b> during flight nudges the pitch a little, but the autopilot pulls it back within a few seconds, so extra key presses won't throw the rocket off course.</p>
+   <p class="src">Real world: on SpaceX's Transporter-9 rideshare, the second stage first entered a 207 × 537 km transfer orbit, coasted for almost an hour, then made a short burn to circularize before releasing satellites. Real upper stages also throttle down at the end of a burn for accuracy, and Falcon 9 first stages often cut off early (MECO) to save fuel for landing.</p>`},
+ {id:"src",title:"Glossary & sources",html:()=>`<div class="sec">APPENDIX</div><h1>Glossary</h1>
+   <table><tr><td>Δv</td><td>How much the rocket can change its speed. Reaching orbit takes roughly 9,300 m/s or more (including gravity and drag losses).</td></tr>
+   <tr><td>Thrust-to-weight (T/W)</td><td>Thrust ÷ weight. It must be above 1 for the rocket to leave the ground.</td></tr>
+   <tr><td>Dynamic pressure / Max-Q</td><td>How hard the air pushes on the rocket. It peaks low in the atmosphere at high speed; that peak is called Max-Q.</td></tr>
+   <tr><td>Perigee / apogee</td><td>The lowest and highest points of an orbit above the ground.</td></tr>
+   <tr><td>Scrub</td><td>Calling off a launch attempt because of weather or a technical problem.</td></tr>
+   <tr><td>Burn wire</td><td>A thin line that is burned through with electric current, letting an antenna or solar panel spring open.</td></tr>
+   <tr><td>Transfer orbit</td><td>A stretched orbit whose high point touches the target altitude. The rocket coasts along it to get there cheaply.</td></tr>
+   <tr><td>Circularization burn</td><td>A burn at apogee that raises perigee until the orbit is round.</td></tr>
+   <tr><td>Orbit insertion / SECO</td><td>The moment the engine shuts down in the planned orbit (SECO = second engine cutoff).</td></tr>
+   <tr><td>Go / no-go</td><td>The final check before launch, where each team confirms it is ready.</td></tr></table>
+   <h3>Sources</h3><p class="src">NASA CubeSat Launch Initiative, <i>CubeSat 101</i> (2017); CubeSat Design Specification Rev 14 (2022); NASA State-of-the-Art of Small Spacecraft Technology (2026); NASA Artemis II Weather Criteria; NASA Falcon 9 Crew Dragon Launch Weather Criteria; NASA ISS reboost reports (2025); NASASpaceflight and eoPortal reports on SpaceX Transporter rideshare missions. Engines, tanks, prices, events and scores are game values. This game is not an official NASA product.</p>`},
+];
+let page=0;
+function showPage(i){page=Math.max(0,Math.min(PAGES.length-1,i));$("book").innerHTML=PAGES[page].html();$("book").scrollTop=0;
+  $("mPg").textContent=`p. ${page+1}/${PAGES.length}`;
+  $("book").querySelectorAll("[data-go]").forEach(a=>a.onclick=()=>showPage(PAGES.findIndex(p=>p.id===a.dataset.go)));}
+$("mPrev").onclick=()=>showPage(page-1);$("mNext").onclick=()=>showPage(page+1);
+$("mToc").onclick=()=>showPage(0);$("mEmg").onclick=()=>{showPage(1);$("mEmg").classList.remove("call");};
+document.querySelectorAll(".mnav button").forEach(b=>b.addEventListener("mousedown",e=>e.preventDefault())); // keep keyboard for left player
+
+
+
+/* ================= step briefings (pop up the first time each step is reached) ================= */
+const INTRO={
+ 0:{k:"STEP 1 · MISSION",h:`<h1>Choose a mission</h1>
+   <table class="tbl"><tr><th>WHAT YOU DO</th><th>REAL WORLD</th></tr>
+   <tr><td>The Engineer picks one of three contracts and reads its code (M-1, M-2, M-3) aloud. The Manual reader looks it up on the <b>Missions</b> page to find the payload, target orbit, <b>budget</b> and <b>deadline</b>.</td><td>A launch contract sets the payload, the orbit and the schedule.</td></tr></table>
+   <h3>Before you choose, watch the money and the fuel</h3>
+   <table class="tbl"><tr><th>WHAT COSTS MONEY</th><th>HOW</th></tr>
+   <tr><td><b>Fuel tank design</b></td><td>More fuel costs more to buy and load. It also makes every <b>scrub</b> more expensive, because the fuel has to be drained and reloaded.</td></tr>
+   <tr><td><b>Launch date</b></td><td>Every day you wait, you pay for the pad and the crew on standby. Earlier is cheaper.</td></tr>
+   <tr><td><b>Weather</b></td><td>A slot that breaks a weather rule is <b>scrubbed</b>: you pay, the slot is lost and the clock keeps running. Borderline wind costs extra too.</td></tr></table>
+   <p><b>Every mission has its own deadline.</b> Launching after it means the mission fails, however good your rocket is.</p>
+   <div class="caution">Don't spend everything on the rocket. Keep some budget in reserve for waiting out bad weather or a scrub.</div>
+   <div class="real">Propellant is usually a tiny share of what a launch costs, often under 1%. The expensive parts are the rocket, the pad, the range and the people. That's why every day of delay and every scrub hurts.</div>`},
+ 1:{k:"STEP 2 · ASSEMBLY",h:`<h1>Build the rocket</h1>
+   <table class="tbl"><tr><th>WHAT YOU DO</th><th>REAL WORLD</th></tr>
+   <tr><td>Stack stages from the bottom up. Each stage has an <b>engine type</b>, an <b>engine count</b>, a <b>tank type</b> and a <b>tank count</b>. The Manual's <b>Quick Designs</b> pages list designs that pass.<br><br>Then choose <b>INSPECT</b>: green lights pass. Red <b>E-codes</b> say what's wrong, and the Manual's <b>Fault codes</b> page says how to fix them.</td>
+   <td>This is the <b>rocket equation</b>: more fuel gives more speed (Δv) but makes the rocket heavier. Staging drops empty tanks on the way up.<br><br>Stage 1 needs high thrust to lift off (thrust-to-weight &gt; 1). Upper stages need engines that are efficient in vacuum.</td></tr></table>
+   <div class="caution">Bigger tanks cost more fuel money now and make a scrub more expensive later.</div>`},
+ 2:{k:"STEP 3 · LAUNCH PLAN",h:`<h1>Pick the launch day and time</h1>
+   <table class="tbl"><tr><th>WHAT YOU DO</th><th>REAL WORLD</th></tr>
+   <tr><td>Move to a slot and read out its icon and the four numbers ①②③④. The Manual reader checks them against the <b>Weather</b> page and says GO or NO-GO.<br><br>Days marked <b>⚑</b> with red stripes are past the deadline. The budget panel on the right shows what each choice will cost.</td>
+   <td>Launch weather officers use rules like these for wind, temperature, lightning and clouds. Breaking just one rule is enough to <b>scrub</b> the launch.</td></tr></table>
+   <div class="caution">Find a slot that is <b>before the deadline</b> and passes <b>all four</b> weather rules, with as little waiting as possible.</div>`},
+};
+const INTRO_ST={open:false,seen:{}};
+function maybeIntro(){const ph=S.phase;if(TUT.open||INTRO_ST.open||INTRO_ST.seen[ph]||!INTRO[ph])return;
+  INTRO_ST.seen[ph]=1;INTRO_ST.open=true;$("introKick").textContent=INTRO[ph].k;$("introBody").innerHTML=INTRO[ph].h;$("intro").hidden=false;}
+function introClose(){INTRO_ST.open=false;$("intro").hidden=true;}
+function introKey(ev){const k=ev.key.toLowerCase();if(["enter"," ","escape"].includes(k)){ev.preventDefault();if(!ev.repeat)introClose();}}
+$("introOk").onclick=introClose;$("introOk").addEventListener("mousedown",e=>e.preventDefault());
+
+/* ================= tutorial (English, both players) ================= */
+const TUT_PAGES=[
+`<h1>One pad. One week. Three customers.</h1>
+ <p>It's 2031. You and your partner have just started <b>Rocket Workshop</b>, a two-person launch company with one launch pad on the coast and <b>one week</b> of rented pad time.</p>
+ <p>Three customers have sent contracts. Each one wants a different payload in a different orbit, with its own <b>budget</b> and its own <b>deadline</b>.</p>
+ <p><b>You only need to fly one of them.</b> Complete any one contract and Rocket Workshop has its first launch and its first paying customer. Fail, and you get to try again (investors are patient… for now).</p>
+ <div class="real">Small launch companies like this really exist. Every launch provider does the same job you're about to do: match a customer's payload and target orbit, design a rocket that can reach it, fit the launch into a weather window before the deadline, and stay on budget. In real life that takes years. You get about 20 minutes.</div>`,
+
+`<h1>Two players, two jobs</h1>
+ <p>Sit side by side. You share one screen, but each of you sees only half of the information. <b>Neither of you can win alone.</b></p>
+ <div class="roles">
+  <div class="l"><div class="tag">LEFT · ENGINEER · KEYBOARD ONLY</div>
+   <p>You have the controls. You see the rocket, the parts (by <b>colour and letter</b>), the weather grid, the flight gauges and the warning codes. <b>You press every button.</b></p>
+   <p>But you <b>can't</b> see what any of it means: no mission requirements, no part specs, no weather rules, no emergency procedures.</p></div>
+  <div class="r"><div class="tag">RIGHT · MANUAL READER · MOUSE ONLY</div>
+   <p>You hold the <b>Manual</b>: mission specs, the parts catalogue, ready-made rocket designs, weather rules, budget rules and emergency procedures.</p>
+   <p>You <b>can't</b> touch the controls. You tell the Engineer exactly what to do.</p></div>
+ </div>
+ <p><b>Talk all the time.</b> The Engineer describes: <i>"Red light, code W-21, gauge ⑧ is glowing."</i> The Manual reader answers with exact instructions: <i>"Stage 1: engine B, count 2, tank T3, one tank."</i></p>
+ <div class="real">Real launches run the same way. The people at the consoles follow flight rules and procedures written long before launch day, and short, clear callouts over the voice loop are how a team avoids mistakes.</div>`,
+
+`<h1>Choose one contract</h1>
+ <p>At the start, pick <b>one</b> of three missions. The Engineer reads the code (M-1, M-2, M-3) aloud and the Manual reader looks it up on the Manual's <b>Missions</b> page to find the payload mass, target orbit, budget and <b>deadline</b>.</p>
+ <div class="tgrid">
+  <div><div class="c">M-1</div><b>Dawn-1</b><p>Four tiny CubeSats built by university students, going to a <b>525 km</b> sun-synchronous orbit.</p><p style="color:var(--dim)">Lightest payload, smallest budget, latest deadline. The best first mission.</p>
+   <div class="real">CubeSats are standard 10 cm cubes ("1U"). Universities often fly them as rideshares, and amateur radio operators really do listen for their signals.</div></div>
+  <div><div class="c">M-2</div><b>Wingspan</b><p>A 3U satellite that will test a new folding solar panel in space.</p><p style="color:var(--dim)">Heaviest payload and highest orbit. You'll need a bigger rocket and more money.</p>
+   <div class="real">Its <b>590 km</b> orbit matches where real rideshares drop their second group of satellites. "Tech demo" missions test new hardware in space cheaply before it's trusted on expensive satellites.</div></div>
+  <div><div class="c">M-3</div><b>Supply Line</b><p>A supply capsule to the International Space Station's orbit, <b>415 km</b>.</p><p style="color:var(--dim)">Lowest orbit, but a tight budget and the <b>tightest deadline</b>.</p>
+   <div class="real">Station crews depend on scheduled cargo flights, and a launch has to line up with the station's orbit. A slip of a few days can push everything after it.</div></div>
+ </div>
+ <p><b>Any one mission completed = a successful launch.</b> To complete it, your rocket has to place the payload <b>exactly in its target orbit</b> (within ± 15 km). Pick the one you think your team can pull off.</p>`,
+
+`<h1>Quick reference</h1>
+ <div class="roles">
+  <div class="l"><div class="tag">ENGINEER · KEYBOARD</div><ul>
+   <li><kbd>W</kbd><kbd>S</kbd> / <kbd>↑</kbd><kbd>↓</kbd>: move up/down, or change a value</li>
+   <li><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd>: move left/right (in flight: fine-tune pitch)</li>
+   <li><kbd>Enter</kbd>: select / edit / confirm</li></ul></div>
+  <div class="r"><div class="tag">MANUAL · MOUSE</div><ul>
+   <li><b>Contents</b>: table of contents</li><li><b>◀ ▶</b>: previous / next page</li>
+   <li><b>⚠ EMERGENCY</b>: emergency codes</li><li><b>? Tutorial</b>: open this guide again</li></ul></div>
+ </div>
+ <h3>Checklist for a winning launch</h3>
+ <ol style="color:#c6d1dc"><li>Pick a mission. The Manual reader checks its <b>budget and deadline</b>.</li>
+ <li>Build a design from <b>Quick Designs</b> and inspect it until every light is green.</li>
+ <li>Check how much budget is left. That's what you have for waiting and scrubs.</li>
+ <li>Choose a slot <b>before the deadline</b> that <b>passes all 4 weather rules</b>.</li>
+ <li>During the 10-second launch prep, the Manual reader opens <b>⚠ EMERGENCY</b>.</li>
+ <li>START LAUNCH, and keep talking until you reach orbit.</li></ol>
+ <p style="color:var(--dim)">Words like Δv and Max-Q are explained in the Manual's Glossary page.</p>`,
+];
+const TUT={open:false,i:0};
+function tutShow(i){TUT.i=Math.max(0,Math.min(TUT_PAGES.length-1,i));$("tutBody").innerHTML=TUT_PAGES[TUT.i];$("tutBody").scrollTop=0;
+  $("tutPg").textContent=`${TUT.i+1} / ${TUT_PAGES.length}`;
+  $("tutDots").innerHTML=TUT_PAGES.map((_,j)=>`<i class="${j===TUT.i?"on":""}"></i>`).join("");
+  $("tutPrev").disabled=TUT.i===0;$("tutNext").textContent=TUT.i===TUT_PAGES.length-1?"Start mission ▶":"Next ▶";}
+function tutOpen(){if(INTRO_ST.open){introClose();delete INTRO_ST.seen[S.phase];}TUT.open=true;$("tut").hidden=false;tutShow(0);}
+function tutClose(){TUT.open=false;$("tut").hidden=true;maybeIntro();}
+function tutKey(ev){const k=ev.key.toLowerCase();
+  if(["arrowright","d","enter"," "].includes(k)){ev.preventDefault();TUT.i===TUT_PAGES.length-1?tutClose():tutShow(TUT.i+1);}
+  else if(["arrowleft","a"].includes(k)){ev.preventDefault();tutShow(TUT.i-1);}
+  else if(k==="escape"){ev.preventDefault();tutClose();}}
+$("tutNext").onclick=()=>TUT.i===TUT_PAGES.length-1?tutClose():tutShow(TUT.i+1);
+$("tutPrev").onclick=()=>tutShow(TUT.i-1);$("tutSkip").onclick=tutClose;$("mTut").onclick=tutOpen;
+document.querySelectorAll(".tutnav button").forEach(b=>b.addEventListener("mousedown",e=>e.preventDefault()));
+
+addEventListener("resize",()=>{if(S.phase===4)drawFlight();});
+showPage(0);render();tutOpen();
+</script>
+<style>
+.topbar{flex-wrap:nowrap;gap:12px}
+.brand{font-size:19px;white-space:nowrap}
+.steps{gap:4px}
+.steps b{font-size:11px;letter-spacing:.05em;padding:4px 7px;white-space:nowrap}
+.meta{gap:8px;white-space:nowrap;font-size:12px}
+.bar{width:80px}
+.mnav{flex-wrap:nowrap;gap:6px}
+.mnav .emg:hover{background:#c9553a}
+.mnav button{padding:7px 10px;font-size:13px;white-space:nowrap}
+.mnav .mtitle{font-size:14px;letter-spacing:.12em}
+.mnav .pg{white-space:nowrap;font-size:12px}
+</style>
