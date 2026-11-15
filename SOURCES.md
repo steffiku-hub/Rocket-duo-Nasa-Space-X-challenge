@@ -41,23 +41,10 @@ Every real-world fact or number used in **Rocket Duo** (`rocket-duo.html`), with
 | Transporter-9: the second stage first entered a 207 × 537 km transfer orbit, coasted, then circularized | Manual › Part 6 Flight profile | Personal enthusiast blog · https://from-that-neighborhood-rocket-fan.blogspot.com/2023/11/spacex-transporter-9.html | 📰 ⚠️ weak source; the blog gives a 42-minute coast, the game says "almost an hour" |
 | Failed antenna / solar panel deployment is a common reason small satellites fail | Manual › W-40 real-world note | *Improving Mission Success of CubeSats* (Aerospace Corporation report TOR-2017-01689, 2017; hosted on nasa.gov, not written by NASA) · https://www.nasa.gov/wp-content/uploads/2017/03/improving_mission_success_of_cubesats_-_tor-2017-01689.pdf | 📰 (not cited in the game yet) |
 
----
-
-## 3. Claims that still need a source ⚠️
-
-| Claim | Where in the game |
-|---|---|
-| "Propellant is usually a tiny share of launch cost, often under 1%" | Manual › Part 5 Budget · Step 1 briefing |
-| Real rockets throttle down around Max-Q to protect the structure | W-12 real-world note |
-| Many engines cool themselves by running cold propellant around the nozzle | W-21 real-world note |
-| Stages are pushed apart by explosive bolts or springs | W-30 real-world note |
-| Falcon 9 first stages often cut off early (MECO) to save fuel for landing | Manual › Part 6 Flight profile |
-
-These are widely known, but no source is cited yet. Before submission, either add a source or reword them as general statements.
 
 ---
 
-## 4. Game values 🎮
+## 3. Game values 🎮
 
 Made up for teaching and labelled as such in the Manual:
 
